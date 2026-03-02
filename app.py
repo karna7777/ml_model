@@ -584,10 +584,10 @@ if page == "📊 Data Exploration":
     tab1, tab2 = st.tabs(["🔍 Sample Data", "📐 Statistics"])
 
     with tab1:
-        st.dataframe(df_clean.head(20), use_container_width=True, height=400)
+        st.dataframe(df_clean.head(20), width="stretch", height=400)
 
     with tab2:
-        st.dataframe(df_clean.describe(), use_container_width=True)
+        st.dataframe(df_clean.describe(), width="stretch")
 
     # --- Target Distribution ---
     st.markdown('<div class="section-header">🎯 Target Distribution</div>', unsafe_allow_html=True)
@@ -609,7 +609,7 @@ if page == "📊 Data Exploration":
             legend=dict(font=dict(color="white")),
             margin=dict(t=20, b=20, l=20, r=20),
         )
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width="stretch")
 
     with col2:
         fig = px.bar(
@@ -627,7 +627,7 @@ if page == "📊 Data Exploration":
             showlegend=False,
             margin=dict(t=20, b=20, l=20, r=20),
         )
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width="stretch")
 
     # --- Feature Distributions ---
     st.markdown('<div class="section-header">📈 Feature Distributions</div>', unsafe_allow_html=True)
@@ -653,7 +653,7 @@ if page == "📊 Data Exploration":
             yaxis=dict(showgrid=True, gridcolor="rgba(255,255,255,0.1)"),
             margin=dict(t=20, b=20, l=20, r=20),
         )
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width="stretch")
 
     with tab_cat:
         if cat_cols:
@@ -674,7 +674,7 @@ if page == "📊 Data Exploration":
                 showlegend=False,
                 margin=dict(t=20, b=20, l=20, r=20),
             )
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width="stretch")
         else:
             st.info("No categorical features available.")
 
@@ -692,7 +692,7 @@ if page == "📊 Data Exploration":
         font=dict(color="white"),
         margin=dict(t=20, b=20, l=20, r=20),
     )
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width="stretch")
 
 
 # ══════════════════════════════════════════════
@@ -705,7 +705,7 @@ elif page == "🤖 Model Training":
         "then compare their performance."
     )
 
-    if st.button("🚀 Train Models", type="primary", use_container_width=True):
+    if st.button("🚀 Train Models", type="primary", width="stretch"):
         with st.spinner("Training models... This may take a moment ⏳"):
             results = train_models(df_clean)
             st.session_state["trained_models"] = results
@@ -751,7 +751,7 @@ elif page == "🤖 Model Training":
                     yaxis=dict(tickfont=dict(color="white")),
                     margin=dict(t=20, b=20, l=20, r=20),
                 )
-                st.plotly_chart(fig, use_container_width=True)
+                st.plotly_chart(fig, width="stretch")
 
         # --- ROC Curves ---
         st.markdown('<div class="section-header">📉 ROC Curves</div>', unsafe_allow_html=True)
@@ -782,7 +782,7 @@ elif page == "🤖 Model Training":
             legend=dict(bgcolor="rgba(0,0,0,0.3)", font=dict(color="white")),
             margin=dict(t=20, b=20, l=20, r=20),
         )
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width="stretch")
 
         # --- Classification Reports ---
         st.markdown('<div class="section-header">📋 Classification Reports</div>', unsafe_allow_html=True)
@@ -791,7 +791,7 @@ elif page == "🤖 Model Training":
             report = results[name]["metrics"]["classification_report"]
             st.markdown(f"**{name}**")
             report_df = pd.DataFrame(report).transpose()
-            st.dataframe(report_df.style.format("{:.4f}"), use_container_width=True)
+            st.dataframe(report_df.style.format("{:.4f}"), width="stretch")
 
     else:
         st.info("👆 Click **Train Models** to begin.")
@@ -864,7 +864,7 @@ elif page == "🔮 Predict Approval":
 
     st.markdown("")
 
-    if st.button("🔮 Predict", type="primary", use_container_width=True):
+    if st.button("🔮 Predict", type="primary", width="stretch"):
         try:
             # Build input dict
             input_data = {
@@ -959,7 +959,7 @@ elif page == "🔮 Predict Approval":
                 height=250,
                 margin=dict(t=40, b=20, l=30, r=30),
             )
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width="stretch")
 
         # Probability breakdown
         st.markdown('<div class="section-header">📊 Probability Breakdown</div>', unsafe_allow_html=True)
@@ -982,4 +982,4 @@ elif page == "🔮 Predict Approval":
             showlegend=False,
             margin=dict(t=20, b=20, l=20, r=20),
         )
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width="stretch")
