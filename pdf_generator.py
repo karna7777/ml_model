@@ -88,4 +88,19 @@ def create_pdf_report(profile, risk_score, risk_class, risk_drivers, regs, repor
     pdf.set_text_color(100, 100, 100)
     pdf.multi_cell(0, 5, sanitize(f"Disclaimer: {report.get('disclaimer', 'N/A')}"))
     
-    return bytes(pdf.output())
+    import tempfile
+    import os
+    
+    # Save safely to a temp file and read standard bytes
+    tmp_path = os.path.join(tempfile.gettempdir(), f"report_{datetime.now().timestamp()}.pdf")
+    pdf.output(tmp_path)
+    
+    with open(tmp_path, "rb") as f:
+        pdf_bytes = f.read()
+        
+    try:
+        os.remove(tmp_path)
+    except Exception:
+        pass
+        
+    return pdf_bytes
