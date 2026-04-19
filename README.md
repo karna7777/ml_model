@@ -1,116 +1,178 @@
-# Project: Credit Risk Scoring & Agentic Lending Decision Support
+# Intelligent Credit Risk Scoring & Agentic Lending Decision Support
 
-## From Credit Risk Prediction to Intelligent Lending Assistance
+## 📋 Project Overview
+This project presents an intelligent credit risk scoring system coupled with an agentic lending decision support framework. It leverages predictive machine learning models to assess borrower risk and an LLM-powered multi-agent system to interpret the results within the context of Reserve Bank of India (RBI) regulations. By synthesizing quantitative risk scores with qualitative regulatory analysis, it aims to provide objective, actionable, and compliant lending recommendations. The project was developed across two key milestones: implementing the core ML risk pipeline and integrating the advanced Agentic workflow.
 
----
-
-## Project Overview
-This project focuses on the design and implementation of an **AI-driven credit risk scoring system** that predicts borrower creditworthiness and later evolves into an **agentic AI–based lending decision support assistant**.
-
-- **Milestone 1:** Classical supervised machine learning techniques applied to historical borrower data to predict credit risk and analyze key risk drivers.
-- **Milestone 2:** Extension into an agentic AI system that autonomously reasons about borrower risk, retrieves regulatory and lending guidelines (RAG), and generates structured lending recommendations.
-
-The project emphasizes **responsible ML practices**, including data preprocessing, avoidance of data leakage, and appropriate evaluation for imbalanced datasets.
-
----
-
-## Constraints & Requirements
-- **Team Size:** 3–4 Students  
-- **API Budget:** Free Tier Only (Open-source models / Free APIs)  
-- **Agent Framework (M2):** LangGraph (Recommended)  
-- **Hosting:** Mandatory for End-Sem (Hugging Face Spaces, Streamlit Cloud, or Render)
-
----
-
-## Technology Stack
+## 🛠 Tech Stack
 
 | Component | Technology |
-| :--- | :--- |
-| **ML Models (M1)** | Logistic Regression, Decision Trees (Scikit-Learn) |
-| **Agent Framework (M2)** | LangGraph |
-| **Vector Store (M2)** | Chroma / FAISS (RAG) |
-| **UI Framework** | Streamlit / Gradio |
-| **LLMs (M2)** | Open-source models or Free-tier APIs |
-| **Data Processing** | Pandas, NumPy |
-| **Visualization** | Matplotlib / Seaborn |
+| --- | --- |
+| **Language** | Python |
+| **ML Models** | Logistic Regression (SMOTE), Decision Tree |
+| **Agentic Framework** | LangGraph |
+| **RAG/Vector Store** | ChromaDB, all-MiniLM-L6-v2 embeddings |
+| **LLM Inference** | Groq API (llama-3.1-8b-instant) |
+| **UI Framework** | Streamlit (4 pages) |
+| **PDF Export**| fpdf2 |
+| **Hosting** | Streamlit Cloud / Hugging Face Spaces |
 
----
+## 📥 Input / Output
 
-## Milestones & Deliverables
+**Inputs:**
+- Applicant financial profile (e.g., income, credit history length, outstanding debt)
+- Demographics & Employment specifics (based on Kaggle Credit Card Approval dataset features)
 
-### Milestone 1: ML-Based Credit Risk Scoring (Mid-Sem)
+**Outputs:**
+- **Risk Score:** Quantitative probability of default.
+- **Risk Class:** Categorical rating (e.g., Low, Medium, High Risk).
+- **Structured Report:** Comprehensive PDF summary including analysis and regulatory compliance notes.
 
-**Objective:**  
-Predict whether a borrower is **risky or non-risky** using historical demographic and financial data, focusing on classical ML pipelines *without using LLMs*.
+## 🏗 System Architecture
 
-**Key Deliverables:**
-- Problem understanding and lending use-case definition  
-- Clean ML pipeline with preprocessing and feature engineering  
-- Removal of data leakage features (repayment status, credit timeline)  
-- Logistic Regression and Decision Tree models  
-- Model evaluation using Accuracy, Confusion Matrix, ROC-AUC  
-- Working local application with UI (Streamlit/Gradio)  
-- Technical report documenting methodology and results  
+```text
+[ Input Features ] 
+        │
+        ▼
+[ ML Layer (LogReg / Decision Tree) ] ──▶ [ Risk Score & Drivers ]
+        │                                         │
+        ▼                                         ▼
+[ Agentic Layer (LangGraph + RAG + LLM) ] ◀───────┘
+        │
+        ▼
+[ Final Output: Formatted Decision Report & PDF ]
+```
 
----
+## 🧠 ML Pipeline (Milestone 1)
 
-### Milestone 2: Agentic AI Lending Decision Assistant (End-Sem)
+The machine learning pipeline processes raw applicant data to produce robust risk assessments, addressing inherent class imbalances in the dataset.
 
-**Objective:**  
-Extend the credit risk model into an **agentic AI assistant** that autonomously reasons about borrower risk and generates structured lending recommendations.
+- **Preprocessing:** Data cleaning, handling missing values, standard scaling for numerical features, and one-hot encoding for categorical variables.
+- **Models Used:** 
+  - Logistic Regression (utilizing SMOTE to handle class imbalance).
+  - Decision Tree classifier (`max_depth=5`, `class_weight='balanced'`).
 
-**Key Deliverables:**
-- **Publicly deployed application** (Link required)  
-- Agent workflow documentation (States & Nodes)  
-- Retrieval-Augmented Generation (RAG) for lending rules and regulations  
-- Structured credit risk and lending recommendation reports  
-- Complete GitHub repository with clean commit history  
-- Demo video (Maximum 5 minutes)  
+**Performance Metrics**
 
----
+| Model | Accuracy | ROC-AUC | F1-Score |
+| --- | --- | --- | --- |
+| Logistic Regression (SMOTE) | 0.xx | 0.xx | 0.xx |
+| Decision Tree (Balanced) | 0.xx | 0.xx | 0.xx |
+*(Note: Replace 0.xx with final calculated metrics)*
 
-## Evaluation Criteria
+**Top 5 Risk Drivers (Decision Tree Feature Importance):**
+1. [Feature 1, e.g., Debt-to-Income Ratio]
+2. [Feature 2, e.g., Payment History Status]
+3. [Feature 3, e.g., Total Income]
+4. [Feature 4, e.g., Number of Open Credit Lines]
+5. [Feature 5, e.g., Credit Utilization]
+*(Note: Update with actual feature names)*
 
-| Phase | Weight | Criteria |
-| :--- | :--- | :--- |
-| **Mid-Sem** | 25% | ML technique application, Feature Engineering, Data Leakage Handling, UI Usability, Evaluation Metrics |
-| **End-Sem** | 30% | Agent reasoning quality, RAG implementation, State management, Output clarity, Deployment success |
+## 🤖 Agentic Workflow (Milestone 2)
 
-> ⚠️ **Important Note**  
-> Localhost-only demonstrations will **not** be accepted for final submission.  
-> The project must be **publicly hosted** for End-Sem evaluation.
+The core decision support logic is orchestrated using LangGraph, executing a deterministic state machine that queries an LLM and local RAG database.
 
----
+### Node Architecture
+```text
+(Start)
+   │
+   ▼
+[1: input_parser] ───────▶ (Validates JSON/format)
+   │
+   ▼
+[2: risk_analyzer] ──────▶ (Interprets ML score & drivers)
+   │
+   ▼
+[3: regulation_retriever]▶ (ChromaDB RAG: Fetches top 3 RBI guidelines)
+   │
+   ▼
+[4: report_generator] ───▶ (Groq LLM Synthesis via llama-3.1)
+   │                       └─▶ (Fallback Chain on rate-limit/error)
+   ▼
+[5: output_formatter] ───▶ (Generates structured final JSON/PDF format)
+   │
+   ▼
+ (End)
+```
 
-## Dataset
-- **Source:** Kaggle – Credit Card Approval Dataset  
-- **Type:** Structured tabular data  
-- **Target Variable:**  
-  - `0` → Non-risk borrower  
-  - `1` → Risky borrower  
+**State Schema (`AgentState` TypedDict):**
+```python
+class AgentState(TypedDict):
+    input_data: dict
+    ml_results: dict
+    risk_analysis: str
+    rbi_context: str
+    draft_report: str
+    final_output: dict
+    error: str
+```
 
-The dataset is **highly imbalanced**, reflecting real-world lending scenarios.
+**Workflow Highlights:**
+- **Conditional Routing:** Edge logic routes to error-handling or fallback mechanisms if `report_generator` fails or if critical inputs are missing.
+- **RAG Pipeline:** Integrates 25 customized RBI regulation chunks. Utilizes cosine similarity via `all-MiniLM-L6-v2` embeddings, dynamically retrieving the top-3 most relevant clauses for the current application.
+- **Prompting Strategies:** Evaluates with `temperature=0.3` for consistent, logical reasoning. Enforces strict JSON schema generation from the LLM, backed by a robust fallback chain for improved reliability.
 
----
+## 📄 Sample Report Output
 
-## Team Contributions
+```json
+{
+  "borrower_summary": "Applicant is a salaried professional with 5 years history and moderate DTI ratio.",
+  "risk_analysis": "ML models indicate a Medium Risk profile (Probability of Default: 18%) largely driven by recent credit utilization.",
+  "lending_recommendation": "Approve with conditions.",
+  "recommended_action": "Require a 10% higher down payment or collateral adjustment.",
+  "regulatory_references": "Complies with RBI Master Circular on Retail Lending Section 4.1 regarding risk-based pricing.",
+  "disclaimer": "This is an AI-generated decision support tool; final approval requires human underwriting review."
+}
+```
 
-| Member | Contribution |
-|------|-------------|
-| Kushagra Bhardwaj | Data preprocessing, feature engineering, leakage handling |
-| Vaibhav Singh | Logistic Regression model training, evaluation, report drafting |
-| Supreet | Dataset sourcing, EDA, frontend/demo interface |
-| Saksham Narotra | Decision Tree model training and performance comparison |
+## ⚖️ Responsible AI
 
----
+- **Bias Mitigations:** Implemented SMOTE and `class_weight='balanced'` to prevent model skew against underrepresented demographics. Analyzed feature distributions using IQR to handle outliers securely. Cross-referenced output against RBI fairness code chunks.
+- **Limitations:**
+  - AI recommendations are advisory and do not replace certified human underwriters.
+  - The deterministic nature of the dataset does not capture macroeconomic shifts.
+  - LLM generations occasionally lack nuance in edge-case regulatory interpretations.
+  - Retrieval (RAG) is limited strictly to the 25 predefined RBI regulation chunks.
 
-## Future Scope
-- Integration of agentic AI for autonomous lending decisions  
-- Explainable AI using feature importance and rule extraction  
-- Deployment with real-time borrower input  
-- Regulatory guideline retrieval using RAG  
+## 📁 Project Structure
 
----
+```text
+ml_model/
+├── data/
+│   └── raw_data.csv
+├── models/
+│   ├── log_reg_smote.pkl
+│   └── tree_balanced.pkl
+├── agent/
+│   ├── graph.py
+│   ├── nodes.py
+│   └── prompts.py
+├── vector_store/
+│   └── chroma_db/
+├── app.py
+├── requirements.txt
+└── README.md
+```
 
-## License
-This project is developed for academic purposes as part of the **Intro to GenAI Capstone Project**.
+## 🚀 How to Run
+
+1. Clone the repository and navigate into the folder.
+   `git clone <repo-url> && cd ml_model`
+2. Install the required dependencies.
+   `pip install -r requirements.txt`
+3. Set your API Keys as Environment Variables.
+   `export GROQ_API_KEY="your_key"`
+4. Run the Streamlit UI.
+   `streamlit run app.py`
+
+## 🔗 Deployment
+
+- **Live App:** [Link to Streamlit Cloud / HF Spaces]
+- **Demo Video:** [Link to Loom/YouTube]
+- **GitHub:** [Link to Repo]
+
+## 👥 Team
+
+- **Kushagra Bhardwaj** — Data preprocessing & feature engineering
+- **Vaibhav Singh** — Logistic Regression, evaluation metrics
+- **Supreet** — EDA, Streamlit UI
+- **Saksham Narotra** — Decision Tree, LangGraph, RAG, LLM
