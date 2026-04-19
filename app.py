@@ -63,6 +63,13 @@ st.markdown("""
         font-family: 'Inter', sans-serif;
     }
 
+    /* Preserve Icon Fonts to prevent "arrow_right" raw text leaking */
+    span.material-symbols-rounded, 
+    span[class*="icon"], 
+    .stIcon {
+        font-family: 'Material Symbols Rounded', 'Material Icons', sans-serif !important;
+    }
+
     .stApp {
         background-color: #1b2838;
         color: #e8edf3;
