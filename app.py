@@ -996,7 +996,7 @@ elif page == "🤖 AI Lending Assistant":
     )
 
     # ── helper: display the full report ──
-    def display_agent_report(final_state):
+    def display_agent_report(final_state, key_prefix="report"):
         """Render the complete AI assessment report from agent state."""
         report = final_state.get("llm_report", {})
         profile = final_state.get("borrower_profile", {})
@@ -1060,7 +1060,7 @@ elif page == "🤖 AI Lending Assistant":
                 height=280,
                 margin=dict(t=40, b=20, l=30, r=30),
             )
-            st.plotly_chart(fig_gauge, width="stretch")
+            st.plotly_chart(fig_gauge, width="stretch", key=f"{key_prefix}_gauge")
         with r_col2:
             rc_color = (
                 "#00b09b" if risk_class == "Low Risk"
@@ -1104,7 +1104,7 @@ elif page == "🤖 AI Lending Assistant":
                         height=250,
                         margin=dict(t=10, b=30, l=20, r=20),
                     )
-                    st.plotly_chart(fig_bar, width="stretch")
+                    st.plotly_chart(fig_bar, width="stretch", key=f"{key_prefix}_bar")
                 else:
                     st.info("Feature importance data not available.")
             except Exception:
@@ -1183,6 +1183,7 @@ elif page == "🤖 AI Lending Assistant":
             data=pdf_bytes,
             file_name="ai_lending_report.pdf",
             mime="application/pdf",
+            key=f"{key_prefix}_download",
         )
 
     # ── Tabs ──
@@ -1210,6 +1211,10 @@ elif page == "🤖 AI Lending Assistant":
                 st.warning("⚠️ Please train models first on the Model Training page.")
             elif not query_text.strip():
                 st.warning("Please enter a borrower description.")
+            elif len(query_text.strip().split()) < 3:
+                st.warning("Please provide a more detailed description of the borrower.")
+            elif not any(word in query_text.lower() for word in ["income", "salary", "age", "year", "old", "work", "job", "employ", "car", "house", "married", "single", "child"]):
+                st.error("🤖 I am an AI Lending Assistant. I can only process loan applicant profiles. Please include relevant details like age, income, employment, or assets to get a proper credit assessment.")
             else:
                 # ── Parse query into profile dict ──
                 q = query_text.lower()
@@ -1317,7 +1322,7 @@ elif page == "🤖 AI Lending Assistant":
                     st.error(f"❌ Agent execution failed: {e}")
 
             if "agent_state_1" in st.session_state:
-                display_agent_report(st.session_state["agent_state_1"])
+                display_agent_report(st.session_state["agent_state_1"], key_prefix="tab1")
 
     # ──────────────────────────────────────────────
     # Tab 2 — Form Assessment
@@ -1405,4 +1410,4 @@ elif page == "🤖 AI Lending Assistant":
                     st.error(f"❌ Agent execution failed: {e}")
 
             if "agent_state_2" in st.session_state:
-                display_agent_report(st.session_state["agent_state_2"])
+                display_agent_report(st.session_state["agent_state_2"], key_prefix="tab2")
