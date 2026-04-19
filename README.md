@@ -172,7 +172,7 @@ ml_model/
 
 ## 👥 Team
 
-- **Kushagra Bhardwaj** — Data preprocessing & feature engineering
-- **Vaibhav Singh** — Logistic Regression, evaluation metrics
-- **Supreet** — EDA, Streamlit UI
-- **Saksham Narotra** — Decision Tree, LangGraph, RAG, LLM
+- **Kushagra Bhardwaj-2401010247
+- **Vaibhav Singh — 2401020074
+- **Supreet — 2401010465
+- **Saksham Narotra — 2401010402
