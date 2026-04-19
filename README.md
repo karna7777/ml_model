@@ -19,8 +19,8 @@ This project presents an intelligent credit risk scoring system coupled with an 
 ## 📥 Input / Output
 
 **Inputs:**
-- Applicant financial profile (e.g., income, credit history length, outstanding debt)
-- Demographics & Employment specifics (based on Kaggle Credit Card Approval dataset features)
+- Applicant financial profile (e.g., income, credit history, outstanding debt)
+- Demographics & employment specifics (based on Kaggle Credit Card Approval dataset features)
 
 **Outputs:**
 - **Risk Score:** Quantitative probability of default.
@@ -39,7 +39,7 @@ This project presents an intelligent credit risk scoring system coupled with an 
 [ Agentic Layer (LangGraph + RAG + LLM) ] ◀───────┘
         │
         ▼
-[ Final Output: Formatted Decision Report & PDF ]
+[ Final Output: Formatted decision report & PDF ]
 ```
 
 ## 🧠 ML Pipeline (Milestone 1)
@@ -128,7 +128,7 @@ class AgentState(TypedDict):
 
 - **Bias Mitigations:** Implemented SMOTE and `class_weight='balanced'` to prevent model skew against underrepresented demographics. Analyzed feature distributions using IQR to handle outliers securely. Cross-referenced output against RBI fairness code chunks.
 - **Limitations:**
-  - AI recommendations are advisory and do not replace certified human underwriters.
+  - AI recommendations are advisory and do not replace human underwriting review.
   - The deterministic nature of the dataset does not capture macroeconomic shifts.
   - LLM generations occasionally lack nuance in edge-case regulatory interpretations.
   - Retrieval (RAG) is limited strictly to the 25 predefined RBI regulation chunks.
