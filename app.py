@@ -171,7 +171,7 @@ st.markdown("""
     }
 
     /* But keep real button text visible (Standard Streamlit Buttons) */
-    .stButton > button p {
+    .stButton > button p, div[data-testid="stDownloadButton"] > button p {
         font-size: 1.05rem !important;
         color: white !important;
     }
@@ -240,7 +240,7 @@ st.markdown("""
     }
 
     /* Professional Action Buttons */
-    .stButton > button {
+    .stButton > button, div[data-testid="stDownloadButton"] > button {
         background-color: #2563eb;
         color: white !important;
         border: 2px solid #3b82f6;
@@ -251,7 +251,7 @@ st.markdown("""
         box-shadow: 0 10px 20px rgba(37, 99, 235, 0.3);
         transition: all 0.3s;
     }
-    .stButton > button:hover {
+    .stButton > button:hover, div[data-testid="stDownloadButton"] > button:hover {
         background-color: #1d4ed8;
         border-color: #2563eb;
         box-shadow: 0 12px 28px rgba(37, 99, 235, 0.5);
@@ -534,7 +534,7 @@ with st.sidebar:
 
     page = st.radio(
         "Navigate",
-        ["📊 Data Exploration", "🤖 Model Training", "🔮 Predict Approval"],
+        ["📊 Data Exploration", "🤖 Model Training", "🔮 Predict Approval", "🤖 AI Lending Assistant"],
         label_visibility="collapsed",
     )
 
@@ -823,7 +823,7 @@ elif page == "🔮 Predict Approval":
         gender = st.selectbox("Gender", ["F", "M"])
         own_car = st.selectbox("Owns a Car?", ["Y", "N"])
         own_realty = st.selectbox("Owns Realty?", ["Y", "N"])
-        children = st.number_input("Number of Children", min_value=0, max_value=10, value=0, step=1)
+        children = st.selectbox("Number of Children", ["No children", "1 children", "2+ children"])
 
     with col2:
         income = st.number_input("Annual Income (₹)", min_value=0, max_value=10000000, value=200000, step=10000)
@@ -871,7 +871,7 @@ elif page == "🔮 Predict Approval":
                 "CODE_GENDER": gender,
                 "FLAG_OWN_CAR": own_car,
                 "FLAG_OWN_REALTY": own_realty,
-                "CNT_CHILDREN": int(children),
+                "CNT_CHILDREN": children,
                 "AMT_INCOME_TOTAL": float(income),
                 "NAME_EDUCATION_TYPE": education,
                 "NAME_FAMILY_STATUS": family_status,
@@ -902,7 +902,7 @@ elif page == "🔮 Predict Approval":
             if scaler is not None:
                 input_scaled = scaler.transform(input_encoded)
             else:
-                input_scaled = input_encoded.values
+                input_scaled = input_encoded
 
             # Predict
             prediction = model.predict(input_scaled)[0]
@@ -983,3 +983,426 @@ elif page == "🔮 Predict Approval":
             margin=dict(t=20, b=20, l=20, r=20),
         )
         st.plotly_chart(fig, width="stretch")
+
+
+# ══════════════════════════════════════════════
+# PAGE 4: AI Lending Assistant
+# ══════════════════════════════════════════════
+elif page == "🤖 AI Lending Assistant":
+    st.markdown("# 🤖 AI Lending Assistant")
+    st.markdown(
+        "Agentic AI-powered credit assessment using ML models, regulatory RAG, "
+        "and LLM-generated reports."
+    )
+
+    # ── helper: display the full report ──
+    def display_agent_report(final_state):
+        """Render the complete AI assessment report from agent state."""
+        report = final_state.get("llm_report", {})
+        profile = final_state.get("borrower_profile", {})
+        risk_score = final_state.get("risk_score", 0.0)
+        risk_class = final_state.get("risk_class", "Unknown")
+        risk_drivers = final_state.get("risk_drivers", [])
+        regs = final_state.get("retrieved_regulations", [])
+        trace = final_state.get("agent_trace", [])
+        error = final_state.get("error", "")
+
+        if error:
+            st.error(f"❌ Agent error: {error}")
+            return
+
+        # ── Agent Trace ──
+        with st.expander("🔍 Agent Execution Trace", expanded=False):
+            for step in trace:
+                status_icon = step.get("status", "")
+                node_name = step.get("node", "")
+                detail = step.get("detail", "")
+                st.markdown(
+                    f"**{status_icon}  `{node_name}`** — {detail}"
+                )
+
+        st.markdown("")
+
+        # ── Borrower Profile Card ──
+        st.markdown('<div class="section-header">📋 Borrower Profile</div>', unsafe_allow_html=True)
+        profile_cols = st.columns(3)
+        items = list(profile.items())
+        for i, (k, v) in enumerate(items):
+            with profile_cols[i % 3]:
+                render_metric_card(k.replace("_", " ").title(), v, "👤")
+
+        st.markdown("")
+
+        # ── Risk Score & Class ──
+        st.markdown('<div class="section-header">🎯 Risk Score & Classification</div>', unsafe_allow_html=True)
+        r_col1, r_col2 = st.columns([2, 1])
+        with r_col1:
+            confidence = (1 - risk_score) * 100
+            fig_gauge = go.Figure(go.Indicator(
+                mode="gauge+number",
+                value=risk_score * 100,
+                title={"text": "Default Probability (%)", "font": {"color": "white"}},
+                number={"suffix": "%", "font": {"color": "white"}},
+                gauge={
+                    "axis": {"range": [0, 100], "tickcolor": "white"},
+                    "bar": {"color": "#667eea"},
+                    "bgcolor": "rgba(255,255,255,0.1)",
+                    "steps": [
+                        {"range": [0, 30], "color": "rgba(0, 176, 155, 0.3)"},
+                        {"range": [30, 60], "color": "rgba(255, 193, 7, 0.3)"},
+                        {"range": [60, 100], "color": "rgba(235, 51, 73, 0.3)"},
+                    ],
+                },
+            ))
+            fig_gauge.update_layout(
+                paper_bgcolor="rgba(0,0,0,0)",
+                font_color="white",
+                height=280,
+                margin=dict(t=40, b=20, l=30, r=30),
+            )
+            st.plotly_chart(fig_gauge, width="stretch")
+        with r_col2:
+            rc_color = (
+                "#00b09b" if risk_class == "Low Risk"
+                else ("#f59e0b" if risk_class == "Medium Risk" else "#eb3349")
+            )
+            st.markdown(
+                f'<div class="metric-card" style="border-color:{rc_color};margin-top:30px;">'
+                f'<div class="metric-label">Risk Class</div>'
+                f'<div class="metric-value" style="color:{rc_color};font-size:1.6rem;">{risk_class}</div>'
+                f'</div>',
+                unsafe_allow_html=True,
+            )
+
+        # ── Top Risk Drivers ──
+        if risk_drivers:
+            st.markdown('<div class="section-header">⚠️ Top Risk Drivers</div>', unsafe_allow_html=True)
+            try:
+                results_m = st.session_state.get("trained_models", {})
+                dt_info = results_m.get("Decision Tree", {})
+                model_dt = dt_info.get("model")
+                feat_names = results_m.get("feature_names", [])
+                if model_dt is not None and hasattr(model_dt, "feature_importances_"):
+                    importances = model_dt.feature_importances_
+                    top_n = min(5, len(feat_names))
+                    top_idx = np.argsort(importances)[::-1][:top_n]
+                    top_features = [feat_names[i] for i in top_idx]
+                    top_values = [float(importances[i]) for i in top_idx]
+                    fig_bar = go.Figure(go.Bar(
+                        x=top_values[::-1],
+                        y=top_features[::-1],
+                        orientation="h",
+                        marker_color="#667eea",
+                    ))
+                    fig_bar.update_layout(
+                        paper_bgcolor="rgba(0,0,0,0)",
+                        plot_bgcolor="rgba(0,0,0,0)",
+                        font_color="white",
+                        xaxis=dict(showgrid=True, gridcolor="rgba(255,255,255,0.1)",
+                                   title="Feature Importance"),
+                        yaxis=dict(showgrid=False),
+                        height=250,
+                        margin=dict(t=10, b=30, l=20, r=20),
+                    )
+                    st.plotly_chart(fig_bar, width="stretch")
+                else:
+                    st.info("Feature importance data not available.")
+            except Exception:
+                for d in risk_drivers:
+                    st.markdown(f"- **{d}**")
+
+        # ── Regulatory Context ──
+        if regs:
+            st.markdown('<div class="section-header">📜 Regulatory Context</div>', unsafe_allow_html=True)
+            for reg in regs:
+                st.markdown(
+                    f'<div style="background:rgba(30,58,95,0.6);border-left:4px solid #3b82f6;'
+                    f'padding:16px 20px;border-radius:8px;margin-bottom:12px;'
+                    f'color:#cbd5e1;font-size:0.92rem;">{reg}</div>',
+                    unsafe_allow_html=True,
+                )
+
+        # ── Lending Recommendation ──
+        rec = report.get("lending_recommendation", "N/A")
+        st.markdown('<div class="section-header">✅ Lending Recommendation</div>', unsafe_allow_html=True)
+        if rec == "Approve":
+            st.markdown(
+                '<div class="result-approved">'
+                '✅ PROPOSAL ACCEPTED<br>'
+                '<span style="font-size:1rem;font-weight:400;">Application meets lending criteria.</span>'
+                '</div>', unsafe_allow_html=True,
+            )
+        elif rec == "Reject":
+            st.markdown(
+                '<div class="result-rejected">'
+                '❌ PROPOSAL REJECTED<br>'
+                '<span style="font-size:1rem;font-weight:400;">Application does not meet lending criteria.</span>'
+                '</div>', unsafe_allow_html=True,
+            )
+        else:
+            st.markdown(
+                f'<div style="background:linear-gradient(135deg,rgba(245,158,11,0.2),rgba(245,158,11,0.05));'
+                f'border:2px solid #f59e0b;border-radius:20px;padding:40px;text-align:center;'
+                f'font-size:2.5rem;font-weight:800;color:#f59e0b;'
+                f'box-shadow:0 0 30px rgba(245,158,11,0.3);margin:20px 0;">'
+                f'⚠️ PROPOSAL: CONDITIONAL APPROVAL<br>'
+                f'<span style="font-size:1rem;font-weight:400;">Additional review required.</span>'
+                f'</div>', unsafe_allow_html=True,
+            )
+
+        # ── AI Analysis ──
+        st.markdown('<div class="section-header">💡 AI Analysis</div>', unsafe_allow_html=True)
+        st.markdown(
+            f'<div style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);'
+            f'border-radius:12px;padding:24px;margin-bottom:12px;">'
+            f'<p style="color:#e8edf3;font-size:0.95rem;line-height:1.7;">'
+            f'<strong>Summary:</strong> {report.get("borrower_summary", "N/A")}</p>'
+            f'<p style="color:#e8edf3;font-size:0.95rem;line-height:1.7;margin-top:12px;">'
+            f'<strong>Risk Analysis:</strong> {report.get("risk_analysis", "N/A")}</p>'
+            f'<p style="color:#cbd5e1;font-size:0.95rem;line-height:1.7;margin-top:12px;">'
+            f'<strong>Recommended Action:</strong> {report.get("recommended_action", "N/A")}</p>'
+            f'</div>',
+            unsafe_allow_html=True,
+        )
+
+        # ── Disclaimer ──
+        st.markdown(
+            f'<div style="background:rgba(100,100,100,0.15);border-radius:8px;'
+            f'padding:16px 20px;margin-top:20px;color:#718096;font-size:0.82rem;">'
+            f'⚖️ <strong>Disclaimer:</strong> {report.get("disclaimer", "N/A")}</div>',
+            unsafe_allow_html=True,
+        )
+
+        # ── Download Report ──
+        st.markdown("")
+        from pdf_generator import create_pdf_report
+        pdf_bytes = create_pdf_report(profile, risk_score, risk_class, risk_drivers, regs, report)
+        
+        st.download_button(
+            label="📥 Download Full Report (PDF)",
+            data=pdf_bytes,
+            file_name="ai_lending_report.pdf",
+            mime="application/pdf",
+        )
+
+    # ── Tabs ──
+    tab1, tab2 = st.tabs(["💬 Query Mode", "📋 Form Assessment"])
+
+    # ──────────────────────────────────────────────
+    # Tab 1 — Query Mode
+    # ──────────────────────────────────────────────
+    with tab1:
+        st.markdown("Enter a freeform description of a loan applicant. "
+                    "The AI agent will parse the query, run ML prediction, "
+                    "retrieve regulations, and generate a full report.")
+
+        query_text = st.text_area(
+            "Describe the borrower",
+            placeholder=(
+                "Example: 35-year-old married male, income 300000, higher education, "
+                "works as a manager, owns a car and house, no children, employed 8 years."
+            ),
+            height=120,
+        )
+
+        if st.button("🚀 Run Agent", key="query_run", type="primary"):
+            if "trained_models" not in st.session_state:
+                st.warning("⚠️ Please train models first on the Model Training page.")
+            elif not query_text.strip():
+                st.warning("Please enter a borrower description.")
+            else:
+                # ── Parse query into profile dict ──
+                q = query_text.lower()
+
+                def _extract_number(text, keywords, default):
+                    import re as _re
+                    for kw in keywords:
+                        pattern = rf"{kw}\s*[:\-]?\s*([\d,.]+)"
+                        m = _re.search(pattern, text)
+                        if m:
+                            return float(m.group(1).replace(",", ""))
+                    return default
+
+                gender = "M" if "male" in q and "female" not in q else "F"
+                own_car = "Y" if "car" in q and "no car" not in q else "N"
+                own_realty = "Y" if any(w in q for w in ["house", "apartment", "realty", "property"]) and "no house" not in q else "N"
+
+                if "no child" in q or "0 child" in q:
+                    cnt_children = "No children"
+                elif "2" in q and "child" in q:
+                    cnt_children = "2+ children"
+                elif "1 child" in q:
+                    cnt_children = "1 children"
+                else:
+                    cnt_children = "No children"
+
+                income = _extract_number(q, ["income", "salary", "earning"], 200000)
+                age = _extract_number(q, ["age", "year.?old", "aged"], 35)
+                employed = _extract_number(q, ["employed", "experience", "working", "years employed"], 5)
+
+                edu_map = {
+                    "higher education": "Higher education",
+                    "academic": "Academic degree",
+                    "secondary": "Secondary / secondary special",
+                    "incomplete": "Incomplete higher",
+                    "lower secondary": "Lower secondary",
+                }
+                education_q = "Secondary / secondary special"
+                for k, v in edu_map.items():
+                    if k in q:
+                        education_q = v
+                        break
+
+                family_map = {
+                    "married": "Married", "single": "Single / not married",
+                    "civil": "Civil marriage", "separated": "Separated", "widow": "Widow",
+                }
+                family_q = "Single / not married"
+                for k, v in family_map.items():
+                    if k in q:
+                        family_q = v
+                        break
+
+                housing_map = {
+                    "house": "House / apartment", "apartment": "House / apartment",
+                    "parent": "With parents", "rent": "Rented apartment",
+                    "municipal": "Municipal apartment", "co-op": "Co-op apartment",
+                    "office": "Office apartment",
+                }
+                housing_q = "House / apartment"
+                for k, v in housing_map.items():
+                    if k in q:
+                        housing_q = v
+                        break
+
+                job_list = [
+                    "Managers", "Private service staff", "Laborers", "Core staff",
+                    "Drivers", "High skill tech staff", "Realty agents", "Secretaries",
+                    "Accountants", "Sales staff", "Medicine staff", "Waiters/barmen staff",
+                    "Low-skill Laborers", "Cleaning staff", "HR staff", "Cooking staff",
+                    "Security staff", "IT staff",
+                ]
+                job_q = "Laborers"
+                for j in job_list:
+                    if j.lower() in q:
+                        job_q = j
+                        break
+
+                parsed_profile = {
+                    "CODE_GENDER": gender,
+                    "FLAG_OWN_CAR": own_car,
+                    "FLAG_OWN_REALTY": own_realty,
+                    "CNT_CHILDREN": cnt_children,
+                    "AMT_INCOME_TOTAL": income,
+                    "NAME_EDUCATION_TYPE": education_q,
+                    "NAME_FAMILY_STATUS": family_q,
+                    "NAME_HOUSING_TYPE": housing_q,
+                    "JOB": job_q,
+                    "AGE": age,
+                    "EMPLOYED_YEARS": employed,
+                }
+
+                st.markdown("**Parsed profile:**")
+                profile_html = "<div style='background:rgba(255,255,255,0.05); padding:15px; border-radius:10px; font-family:monospace; font-size:14px; color:#cbd5e1;'>"
+                for k, v in parsed_profile.items():
+                    profile_html += f"<span style='color:#3b82f6; font-weight:700;'>\"{k}\"</span>: {v}<br>"
+                profile_html += "</div><br>"
+                st.markdown(profile_html, unsafe_allow_html=True)
+
+                try:
+                    from agent_workflow import run_agent
+                    with st.spinner("🤖 Agent is analyzing the borrower profile..."):
+                        st.session_state["agent_state_1"] = run_agent(parsed_profile)
+                except Exception as e:
+                    st.error(f"❌ Agent execution failed: {e}")
+
+            if "agent_state_1" in st.session_state:
+                display_agent_report(st.session_state["agent_state_1"])
+
+    # ──────────────────────────────────────────────
+    # Tab 2 — Form Assessment
+    # ──────────────────────────────────────────────
+    with tab2:
+        if "trained_models" not in st.session_state:
+            st.warning("⚠️ Please train models first on the Model Training page.")
+        else:
+            st.markdown('<div class="section-header">📝 Applicant Details</div>', unsafe_allow_html=True)
+
+            f_col1, f_col2, f_col3 = st.columns(3)
+
+            with f_col1:
+                f_gender = st.selectbox("Gender", ["F", "M"], key="f_gender")
+                f_car = st.selectbox("Owns a Car?", ["Y", "N"], key="f_car")
+                f_realty = st.selectbox("Owns Realty?", ["Y", "N"], key="f_realty")
+                f_children = st.selectbox("Number of Children",
+                                          ["No children", "1 children", "2+ children"],
+                                          key="f_children")
+
+            with f_col2:
+                f_income = st.number_input("Annual Income (₹)", min_value=0,
+                                            max_value=10000000, value=200000,
+                                            step=10000, key="f_income")
+                f_age = st.slider("Age (years)", min_value=18, max_value=70,
+                                   value=35, key="f_age")
+                f_employed = st.slider("Years Employed", min_value=0.0,
+                                        max_value=40.0, value=5.0, step=0.5,
+                                        key="f_employed")
+
+            with f_col3:
+                f_education = st.selectbox("Education", [
+                    "Secondary / secondary special",
+                    "Higher education",
+                    "Incomplete higher",
+                    "Lower secondary",
+                    "Academic degree",
+                ], key="f_education")
+                f_family = st.selectbox("Family Status", [
+                    "Married",
+                    "Single / not married",
+                    "Civil marriage",
+                    "Separated",
+                    "Widow",
+                ], key="f_family")
+                f_housing = st.selectbox("Housing Type", [
+                    "House / apartment",
+                    "With parents",
+                    "Rented apartment",
+                    "Municipal apartment",
+                    "Co-op apartment",
+                    "Office apartment",
+                ], key="f_housing")
+
+            f_job = st.selectbox("Job Type", [
+                "Managers", "Private service staff", "Laborers", "Core staff",
+                "Drivers", "High skill tech staff", "Realty agents", "Secretaries",
+                "Accountants", "Sales staff", "Medicine staff", "Waiters/barmen staff",
+                "Low-skill Laborers", "Cleaning staff", "HR staff", "Cooking staff",
+                "Security staff", "IT staff",
+            ], key="f_job")
+
+            st.markdown("")
+
+            if st.button("🚀 Run AI Assessment", key="form_run", type="primary"):
+                form_profile = {
+                    "CODE_GENDER": f_gender,
+                    "FLAG_OWN_CAR": f_car,
+                    "FLAG_OWN_REALTY": f_realty,
+                    "CNT_CHILDREN": f_children,
+                    "AMT_INCOME_TOTAL": float(f_income),
+                    "NAME_EDUCATION_TYPE": f_education,
+                    "NAME_FAMILY_STATUS": f_family,
+                    "NAME_HOUSING_TYPE": f_housing,
+                    "JOB": f_job,
+                    "AGE": float(f_age),
+                    "EMPLOYED_YEARS": float(f_employed),
+                }
+
+                try:
+                    from agent_workflow import run_agent
+                    with st.spinner("🤖 Agent is analyzing the borrower profile..."):
+                        st.session_state["agent_state_2"] = run_agent(form_profile)
+                except Exception as e:
+                    st.error(f"❌ Agent execution failed: {e}")
+
+            if "agent_state_2" in st.session_state:
+                display_agent_report(st.session_state["agent_state_2"])
