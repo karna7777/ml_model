@@ -58,7 +58,7 @@ st.markdown("""
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap');
 
     /* Global Typography & Theme */
-    .stApp, .stApp p, .stApp span, .stApp div, .stApp label,
+    .stApp, .stApp p, .stApp label,
     .stApp h1, .stApp h2, .stApp h3, .stApp h4, .stApp h5, .stApp h6 {
         font-family: 'Inter', sans-serif;
     }
