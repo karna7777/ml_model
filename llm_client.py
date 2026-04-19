@@ -11,17 +11,17 @@ missing or the call fails.
 import json
 import re
 from typing import Optional
-import os
 
 # ────────────────────────────────────────────────────────────────
 # Groq configuration
 # ────────────────────────────────────────────────────────────────
 
-try:
-    import streamlit as st
-    GROQ_API_KEY = st.secrets.get("GROQ_API_KEY", os.environ.get("GROQ_API_KEY", ""))
-except Exception:
-    GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 GROQ_MODEL = "llama-3.1-8b-instant"
 
 DISCLAIMER_TEXT = (
@@ -45,6 +45,7 @@ def _build_prompt(
 ) -> str:
     """Build the system + user prompt for the LLM."""
 
+    profile_name = borrower_profile.get("NAME", "Applicant")
     profile_str = "\n".join(f"  - {k}: {v}" for k, v in borrower_profile.items())
     drivers_str = ", ".join(risk_drivers) if risk_drivers else "N/A"
     regs_str = "\n".join(f"  [{i+1}] {r}" for i, r in enumerate(regulations))
@@ -66,7 +67,7 @@ INSTRUCTIONS:
 1. Produce ONLY valid JSON — no markdown fences, no commentary.
 2. Use this exact schema:
 {{
-  "borrower_summary": "2-3 sentence neutral summary of the borrower profile",
+  "borrower_summary": "Start with 'Dear {profile_name}, your application has been ACCEPTED (or REJECTED/CONDITIONALLY APPROVED).' Then give a 2-3 sentence summary of the borrower profile.",
   "risk_analysis": "3-4 sentences explaining the risk score referencing specific features and drivers",
   "lending_recommendation": "Approve / Conditional Approval / Reject",
   "recommended_action": "Specific actionable advice for the lending officer",

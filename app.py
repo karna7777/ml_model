@@ -1,5 +1,3 @@
-import os
-os.environ["PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION"] = "python"
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -61,13 +59,6 @@ st.markdown("""
     .stApp, .stApp p, .stApp span, .stApp div, .stApp label,
     .stApp h1, .stApp h2, .stApp h3, .stApp h4, .stApp h5, .stApp h6 {
         font-family: 'Inter', sans-serif;
-    }
-
-    /* Preserve Icon Fonts to prevent "arrow_right" raw text leaking */
-    span.material-symbols-rounded, 
-    span[class*="icon"], 
-    .stIcon {
-        font-family: 'Material Symbols Rounded', 'Material Icons', sans-serif !important;
     }
 
     .stApp {
@@ -1005,7 +996,7 @@ elif page == "🤖 AI Lending Assistant":
     )
 
     # ── helper: display the full report ──
-    def display_agent_report(final_state, key_prefix="report"):
+    def display_agent_report(final_state):
         """Render the complete AI assessment report from agent state."""
         report = final_state.get("llm_report", {})
         profile = final_state.get("borrower_profile", {})
@@ -1069,7 +1060,7 @@ elif page == "🤖 AI Lending Assistant":
                 height=280,
                 margin=dict(t=40, b=20, l=30, r=30),
             )
-            st.plotly_chart(fig_gauge, width="stretch", key=f"{key_prefix}_gauge")
+            st.plotly_chart(fig_gauge, width="stretch")
         with r_col2:
             rc_color = (
                 "#00b09b" if risk_class == "Low Risk"
@@ -1113,7 +1104,7 @@ elif page == "🤖 AI Lending Assistant":
                         height=250,
                         margin=dict(t=10, b=30, l=20, r=20),
                     )
-                    st.plotly_chart(fig_bar, width="stretch", key=f"{key_prefix}_bar")
+                    st.plotly_chart(fig_bar, width="stretch")
                 else:
                     st.info("Feature importance data not available.")
             except Exception:
@@ -1134,10 +1125,12 @@ elif page == "🤖 AI Lending Assistant":
         # ── Lending Recommendation ──
         rec = report.get("lending_recommendation", "N/A")
         st.markdown('<div class="section-header">✅ Lending Recommendation</div>', unsafe_allow_html=True)
+        name = profile.get("NAME", "Applicant")
         if rec == "Approve":
             st.markdown(
                 '<div class="result-approved">'
                 '✅ PROPOSAL ACCEPTED<br>'
+                f'<span style="font-size:1rem;font-weight:700;">Dear {name}, your application has been ACCEPTED.</span><br>'
                 '<span style="font-size:1rem;font-weight:400;">Application meets lending criteria.</span>'
                 '</div>', unsafe_allow_html=True,
             )
@@ -1145,6 +1138,7 @@ elif page == "🤖 AI Lending Assistant":
             st.markdown(
                 '<div class="result-rejected">'
                 '❌ PROPOSAL REJECTED<br>'
+                f'<span style="font-size:1rem;font-weight:700;">Dear {name}, your application has been REJECTED.</span><br>'
                 '<span style="font-size:1rem;font-weight:400;">Application does not meet lending criteria.</span>'
                 '</div>', unsafe_allow_html=True,
             )
@@ -1192,8 +1186,13 @@ elif page == "🤖 AI Lending Assistant":
             data=pdf_bytes,
             file_name="ai_lending_report.pdf",
             mime="application/pdf",
-            key=f"{key_prefix}_download",
         )
+
+        with st.expander("📄 View PDF Online"):
+            import base64
+            b64_pdf = base64.b64encode(pdf_bytes).decode('utf-8')
+            pdf_display = f'<iframe src="data:application/pdf;base64,{b64_pdf}" width="100%" height="800" type="application/pdf"></iframe>'
+            st.markdown(pdf_display, unsafe_allow_html=True)
 
     # ── Tabs ──
     tab1, tab2 = st.tabs(["💬 Query Mode", "📋 Form Assessment"])
@@ -1216,25 +1215,36 @@ elif page == "🤖 AI Lending Assistant":
         )
 
         if st.button("🚀 Run Agent", key="query_run", type="primary"):
+            valid_kws = ["income", "salary", "age", "year", "employed", "car", "house", "loan"]
+            q = query_text.lower()
             if "trained_models" not in st.session_state:
                 st.warning("⚠️ Please train models first on the Model Training page.")
-            elif not query_text.strip():
-                st.warning("Please enter a borrower description.")
-            elif len(query_text.strip().split()) < 3:
-                st.warning("Please provide a more detailed description of the borrower.")
-            elif not any(word in query_text.lower() for word in ["income", "salary", "age", "year", "old", "work", "job", "employ", "car", "house", "married", "single", "child"]):
-                st.error("🤖 I am an AI Lending Assistant. I can only process loan applicant profiles. Please include relevant details like age, income, employment, or assets to get a proper credit assessment.")
+            elif not query_text.strip() or not any(kw in q for kw in valid_kws):
+                st.error("Invalid input. Please provide valid borrower details like age, income, and employment.")
             else:
                 # ── Parse query into profile dict ──
-                q = query_text.lower()
+                import re as _re
+                name_match = _re.search(r"name\s*(?:is|:)?\s*([A-Za-z]+)", query_text, _re.IGNORECASE)
+                extracted_name = name_match.group(1).capitalize() if name_match else "Unknown"
+
 
                 def _extract_number(text, keywords, default):
                     import re as _re
                     for kw in keywords:
                         pattern = rf"{kw}\s*[:\-]?\s*([\d,.]+)"
+                        # Search forward
                         m = _re.search(pattern, text)
                         if m:
-                            return float(m.group(1).replace(",", ""))
+                            val_str = m.group(1).replace(",", "")
+                            if val_str.replace(".", "").isdigit():
+                                return float(val_str)
+                        # Search backward (e.g., "7 years of experience" -> look for number before)
+                        pattern_back = rf"([\d,.]+)\s*(?:years?\s+of\s+)?{kw}"
+                        m_back = _re.search(pattern_back, text)
+                        if m_back:
+                            val_str = m_back.group(1).replace(",", "")
+                            if val_str.replace(".", "").isdigit():
+                                return float(val_str)
                     return default
 
                 gender = "M" if "male" in q and "female" not in q else "F"
@@ -1303,6 +1313,7 @@ elif page == "🤖 AI Lending Assistant":
                         break
 
                 parsed_profile = {
+                    "NAME": extracted_name,
                     "CODE_GENDER": gender,
                     "FLAG_OWN_CAR": own_car,
                     "FLAG_OWN_REALTY": own_realty,
@@ -1326,12 +1337,9 @@ elif page == "🤖 AI Lending Assistant":
                 try:
                     from agent_workflow import run_agent
                     with st.spinner("🤖 Agent is analyzing the borrower profile..."):
-                        st.session_state["agent_state_1"] = run_agent(parsed_profile)
+                        st.session_state["agent_state"] = run_agent(parsed_profile)
                 except Exception as e:
                     st.error(f"❌ Agent execution failed: {e}")
-
-            if "agent_state_1" in st.session_state:
-                display_agent_report(st.session_state["agent_state_1"], key_prefix="tab1")
 
     # ──────────────────────────────────────────────
     # Tab 2 — Form Assessment
@@ -1341,6 +1349,7 @@ elif page == "🤖 AI Lending Assistant":
             st.warning("⚠️ Please train models first on the Model Training page.")
         else:
             st.markdown('<div class="section-header">📝 Applicant Details</div>', unsafe_allow_html=True)
+            applicant_name_f = st.text_input("Enter your name", key="form_name")
 
             f_col1, f_col2, f_col3 = st.columns(3)
 
@@ -1397,26 +1406,32 @@ elif page == "🤖 AI Lending Assistant":
             st.markdown("")
 
             if st.button("🚀 Run AI Assessment", key="form_run", type="primary"):
-                form_profile = {
-                    "CODE_GENDER": f_gender,
-                    "FLAG_OWN_CAR": f_car,
-                    "FLAG_OWN_REALTY": f_realty,
-                    "CNT_CHILDREN": f_children,
-                    "AMT_INCOME_TOTAL": float(f_income),
-                    "NAME_EDUCATION_TYPE": f_education,
-                    "NAME_FAMILY_STATUS": f_family,
-                    "NAME_HOUSING_TYPE": f_housing,
-                    "JOB": f_job,
-                    "AGE": float(f_age),
-                    "EMPLOYED_YEARS": float(f_employed),
-                }
+                if not applicant_name_f.strip():
+                    st.error("Invalid input. Please provide all required and valid details.")
+                else:
+                    form_profile = {
+                        "NAME": applicant_name_f.strip(),
+                        "CODE_GENDER": f_gender,
+                        "FLAG_OWN_CAR": f_car,
+                        "FLAG_OWN_REALTY": f_realty,
+                        "CNT_CHILDREN": f_children,
+                        "AMT_INCOME_TOTAL": float(f_income),
+                        "NAME_EDUCATION_TYPE": f_education,
+                        "NAME_FAMILY_STATUS": f_family,
+                        "NAME_HOUSING_TYPE": f_housing,
+                        "JOB": f_job,
+                        "AGE": float(f_age),
+                        "EMPLOYED_YEARS": float(f_employed),
+                    }
 
-                try:
-                    from agent_workflow import run_agent
-                    with st.spinner("🤖 Agent is analyzing the borrower profile..."):
-                        st.session_state["agent_state_2"] = run_agent(form_profile)
-                except Exception as e:
-                    st.error(f"❌ Agent execution failed: {e}")
+                    try:
+                        from agent_workflow import run_agent
+                        with st.spinner("🤖 Agent is analyzing the borrower profile..."):
+                            st.session_state["agent_state"] = run_agent(form_profile)
+                    except Exception as e:
+                        st.error(f"❌ Agent execution failed: {e}")
 
-            if "agent_state_2" in st.session_state:
-                display_agent_report(st.session_state["agent_state_2"], key_prefix="tab2")
+    # ── Render active cross-tab state ──
+    if "agent_state" in st.session_state:
+        st.markdown("<hr>", unsafe_allow_html=True)
+        display_agent_report(st.session_state["agent_state"])

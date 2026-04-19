@@ -50,7 +50,7 @@ def input_parser(state: AgentState) -> AgentState:
 
     # Required fields
     required_fields = [
-        "CODE_GENDER", "FLAG_OWN_CAR", "FLAG_OWN_REALTY",
+        "NAME", "CODE_GENDER", "FLAG_OWN_CAR", "FLAG_OWN_REALTY",
         "CNT_CHILDREN", "AMT_INCOME_TOTAL",
         "NAME_EDUCATION_TYPE", "NAME_FAMILY_STATUS",
         "NAME_HOUSING_TYPE", "JOB", "AGE", "EMPLOYED_YEARS",
