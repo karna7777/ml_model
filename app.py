@@ -1,3 +1,6 @@
+import os
+os.environ["PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION"] = "python"
+
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -1224,14 +1227,16 @@ elif page == "🤖 AI Lending Assistant":
             else:
                 # ── Parse query into profile dict ──
                 import re as _re
-                name_match = _re.search(r"name\s*(?:is|:)?\s*([A-Za-z]+)", query_text, _re.IGNORECASE)
+                # Improved name extraction: matches "name is X", "myself X", "i am X", "this is X"
+                name_match = _re.search(r"(?:name\s*(?:is|:)?|myself|i\s*am|this\s*is)\s*([A-Za-z]+)", query_text, _re.IGNORECASE)
                 extracted_name = name_match.group(1).capitalize() if name_match else "Unknown"
 
 
                 def _extract_number(text, keywords, default):
                     import re as _re
                     for kw in keywords:
-                        pattern = rf"{kw}\s*[:\-]?\s*([\d,.]+)"
+                        # Improved: handles "income of 100000", "income is 100000", etc.
+                        pattern = rf"{kw}\s*(?:of|is|:|-)?\s*([\d,.]+)"
                         # Search forward
                         m = _re.search(pattern, text)
                         if m:
@@ -1239,7 +1244,7 @@ elif page == "🤖 AI Lending Assistant":
                             if val_str.replace(".", "").isdigit():
                                 return float(val_str)
                         # Search backward (e.g., "7 years of experience" -> look for number before)
-                        pattern_back = rf"([\d,.]+)\s*(?:years?\s+of\s+)?{kw}"
+                        pattern_back = rf"([\d,.]+)\s*(?:years?\s+(?:of\s+)?){kw}"
                         m_back = _re.search(pattern_back, text)
                         if m_back:
                             val_str = m_back.group(1).replace(",", "")
@@ -1278,8 +1283,8 @@ elif page == "🤖 AI Lending Assistant":
                         break
 
                 family_map = {
-                    "married": "Married", "single": "Single / not married",
-                    "civil": "Civil marriage", "separated": "Separated", "widow": "Widow",
+                    "marr": "Married", "mari": "Married", "sing": "Single / not married",
+                    "civil": "Civil marriage", "sep": "Separated", "widow": "Widow",
                 }
                 family_q = "Single / not married"
                 for k, v in family_map.items():
