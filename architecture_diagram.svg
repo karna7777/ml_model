@@ -1,0 +1,179 @@
+<svg viewBox="0 0 900 720" xmlns="http://www.w3.org/2000/svg" font-family="Segoe UI, Arial, sans-serif">
+
+  <!-- Background -->
+  <rect width="900" height="720" fill="#0f1117" rx="16"/>
+
+  <!-- Title -->
+  <text x="450" y="38" text-anchor="middle" fill="#ffffff" font-size="17" font-weight="bold">Intelligent Credit Risk Scoring &amp; Agentic Lending Decision Support</text>
+  <text x="450" y="58" text-anchor="middle" fill="#8b9ab3" font-size="12">System Architecture — End-to-End Pipeline</text>
+
+  <!-- ───── LAYER 1: INPUT ───── -->
+  <rect x="30" y="78" width="840" height="90" rx="10" fill="#1a2235" stroke="#3b82f6" stroke-width="1.5"/>
+  <text x="50" y="98" fill="#3b82f6" font-size="11" font-weight="bold">LAYER 1 — INPUT</text>
+
+  <!-- CSV Box -->
+  <rect x="100" y="108" width="190" height="46" rx="8" fill="#1e3a5f" stroke="#3b82f6" stroke-width="1.5"/>
+  <text x="195" y="127" text-anchor="middle" fill="#93c5fd" font-size="11" font-weight="bold">📄 CSV Dataset</text>
+  <text x="195" y="144" text-anchor="middle" fill="#64748b" font-size="10">credit_card_approval.csv</text>
+
+  <!-- Live Input Box -->
+  <rect x="610" y="108" width="190" height="46" rx="8" fill="#1e3a5f" stroke="#3b82f6" stroke-width="1.5"/>
+  <text x="705" y="127" text-anchor="middle" fill="#93c5fd" font-size="11" font-weight="bold">🖥️ Live Borrower Input</text>
+  <text x="705" y="144" text-anchor="middle" fill="#64748b" font-size="10">Streamlit Form (Page 3 &amp; 4)</text>
+
+  <!-- Arrow down from layer 1 -->
+  <line x1="450" y1="168" x2="450" y2="185" stroke="#475569" stroke-width="1.5" marker-end="url(#arr)"/>
+
+  <!-- ───── LAYER 2: ML ───── -->
+  <rect x="30" y="185" width="840" height="165" rx="10" fill="#1a2820" stroke="#22c55e" stroke-width="1.5"/>
+  <text x="50" y="205" fill="#22c55e" font-size="11" font-weight="bold">LAYER 2 — ML PIPELINE (Milestone 1)</text>
+
+  <!-- Preprocessing -->
+  <rect x="55" y="215" width="220" height="120" rx="8" fill="#14331e" stroke="#22c55e" stroke-width="1.2"/>
+  <text x="165" y="234" text-anchor="middle" fill="#86efac" font-size="11" font-weight="bold">⚙️ Preprocessing</text>
+  <text x="75" y="252" fill="#6ee7b7" font-size="10">① Replace "?" → NaN</text>
+  <text x="75" y="268" fill="#6ee7b7" font-size="10">② Engineer AGE, EMPLOYED_YEARS</text>
+  <text x="75" y="284" fill="#6ee7b7" font-size="10">③ IQR Outlier Removal</text>
+  <text x="75" y="300" fill="#6ee7b7" font-size="10">④ One-Hot Encoding</text>
+  <text x="75" y="316" fill="#6ee7b7" font-size="10">⑤ StandardScaler + SMOTE</text>
+
+  <!-- Arrow -->
+  <line x1="275" y1="275" x2="305" y2="275" stroke="#475569" stroke-width="1.5" marker-end="url(#arr)"/>
+
+  <!-- Models -->
+  <rect x="305" y="215" width="200" height="120" rx="8" fill="#14331e" stroke="#22c55e" stroke-width="1.2"/>
+  <text x="405" y="234" text-anchor="middle" fill="#86efac" font-size="11" font-weight="bold">🤖 ML Models</text>
+  <text x="320" y="255" fill="#6ee7b7" font-size="10">• Logistic Regression + SMOTE</text>
+  <text x="320" y="272" fill="#6ee7b7" font-size="10">• Decision Tree (depth=5)</text>
+  <text x="320" y="289" fill="#6ee7b7" font-size="10">  class_weight = balanced</text>
+  <text x="320" y="306" fill="#6ee7b7" font-size="10">• 80/20 Stratified Split</text>
+
+  <!-- Arrow -->
+  <line x1="505" y1="275" x2="535" y2="275" stroke="#475569" stroke-width="1.5" marker-end="url(#arr)"/>
+
+  <!-- Output -->
+  <rect x="535" y="215" width="300" height="120" rx="8" fill="#14331e" stroke="#22c55e" stroke-width="1.2"/>
+  <text x="685" y="234" text-anchor="middle" fill="#86efac" font-size="11" font-weight="bold">📊 ML Output</text>
+  <text x="550" y="255" fill="#6ee7b7" font-size="10">• Risk Score: 0.0 – 1.0 (P of default)</text>
+  <text x="550" y="272" fill="#6ee7b7" font-size="10">• Risk Class: Low / Medium / High</text>
+  <text x="550" y="289" fill="#6ee7b7" font-size="10">• Top Risk Drivers (feature_importances_)</text>
+  <text x="550" y="306" fill="#6ee7b7" font-size="10">• ROC-AUC ~0.79 | Accuracy ~88%</text>
+
+  <!-- Arrow down -->
+  <line x1="450" y1="350" x2="450" y2="368" stroke="#475569" stroke-width="1.5" marker-end="url(#arr)"/>
+
+  <!-- ───── LAYER 3: AGENTIC ───── -->
+  <rect x="30" y="368" width="840" height="205" rx="10" fill="#1e1a35" stroke="#a855f7" stroke-width="1.5"/>
+  <text x="50" y="388" fill="#a855f7" font-size="11" font-weight="bold">LAYER 3 — AGENTIC AI PIPELINE — LangGraph (Milestone 2)</text>
+
+  <!-- Node boxes -->
+  <!-- Node 1 -->
+  <rect x="45" y="398" width="140" height="155" rx="8" fill="#2d1f4e" stroke="#a855f7" stroke-width="1.2"/>
+  <text x="115" y="418" text-anchor="middle" fill="#d8b4fe" font-size="10" font-weight="bold">NODE 1</text>
+  <text x="115" y="433" text-anchor="middle" fill="#c084fc" font-size="10">input_parser</text>
+  <line x1="55" y1="440" x2="175" y2="440" stroke="#4c1d95" stroke-width="1"/>
+  <text x="55" y="455" fill="#a78bfa" font-size="9">✓ Validate 11 fields</text>
+  <text x="55" y="470" fill="#a78bfa" font-size="9">✓ Cast types</text>
+  <text x="55" y="485" fill="#a78bfa" font-size="9">✓ Range checks</text>
+  <text x="55" y="500" fill="#a78bfa" font-size="9">✓ agent_trace log</text>
+  <text x="55" y="520" fill="#6b7280" font-size="9">→ borrower_profile</text>
+  <text x="55" y="535" fill="#ef4444" font-size="9">⚠ error → END</text>
+
+  <line x1="185" y1="475" x2="205" y2="475" stroke="#7c3aed" stroke-width="1.5" marker-end="url(#arr2)"/>
+
+  <!-- Node 2 -->
+  <rect x="205" y="398" width="140" height="155" rx="8" fill="#2d1f4e" stroke="#a855f7" stroke-width="1.2"/>
+  <text x="275" y="418" text-anchor="middle" fill="#d8b4fe" font-size="10" font-weight="bold">NODE 2</text>
+  <text x="275" y="433" text-anchor="middle" fill="#c084fc" font-size="10">risk_analyzer</text>
+  <line x1="215" y1="440" x2="335" y2="440" stroke="#4c1d95" stroke-width="1"/>
+  <text x="215" y="455" fill="#a78bfa" font-size="9">✓ Load Decision Tree</text>
+  <text x="215" y="470" fill="#a78bfa" font-size="9">✓ predict_proba()</text>
+  <text x="215" y="485" fill="#a78bfa" font-size="9">✓ Classify risk</text>
+  <text x="215" y="500" fill="#a78bfa" font-size="9">✓ Top-3 drivers</text>
+  <text x="215" y="520" fill="#6b7280" font-size="9">→ risk_score</text>
+  <text x="215" y="535" fill="#6b7280" font-size="9">→ risk_class</text>
+
+  <line x1="345" y1="475" x2="365" y2="475" stroke="#7c3aed" stroke-width="1.5" marker-end="url(#arr2)"/>
+
+  <!-- Node 3 -->
+  <rect x="365" y="398" width="148" height="155" rx="8" fill="#2d1f4e" stroke="#a855f7" stroke-width="1.2"/>
+  <text x="439" y="418" text-anchor="middle" fill="#d8b4fe" font-size="10" font-weight="bold">NODE 3</text>
+  <text x="439" y="433" text-anchor="middle" fill="#c084fc" font-size="10">regulation_retriever</text>
+  <line x1="375" y1="440" x2="503" y2="440" stroke="#4c1d95" stroke-width="1"/>
+  <text x="375" y="455" fill="#a78bfa" font-size="9">✓ Build query</text>
+  <text x="375" y="470" fill="#a78bfa" font-size="9">✓ ChromaDB search</text>
+  <text x="375" y="485" fill="#a78bfa" font-size="9">✓ Top-3 regulations</text>
+  <text x="375" y="500" fill="#a78bfa" font-size="9">  cosine similarity</text>
+  <text x="375" y="520" fill="#6b7280" font-size="9">→ retrieved_regs</text>
+  <text x="375" y="535" fill="#22c55e" font-size="9">soft fail → []</text>
+
+  <line x1="513" y1="475" x2="533" y2="475" stroke="#7c3aed" stroke-width="1.5" marker-end="url(#arr2)"/>
+
+  <!-- Node 4 -->
+  <rect x="533" y="398" width="148" height="155" rx="8" fill="#2d1f4e" stroke="#a855f7" stroke-width="1.2"/>
+  <text x="607" y="418" text-anchor="middle" fill="#d8b4fe" font-size="10" font-weight="bold">NODE 4</text>
+  <text x="607" y="433" text-anchor="middle" fill="#c084fc" font-size="10">report_generator</text>
+  <line x1="543" y1="440" x2="671" y2="440" stroke="#4c1d95" stroke-width="1"/>
+  <text x="543" y="455" fill="#a78bfa" font-size="9">✓ Groq LLaMA-3.1-8b</text>
+  <text x="543" y="470" fill="#a78bfa" font-size="9">✓ temp=0.3, JSON</text>
+  <text x="543" y="485" fill="#a78bfa" font-size="9">✓ schema prompt</text>
+  <text x="543" y="500" fill="#a78bfa" font-size="9">✓ Rule fallback</text>
+  <text x="543" y="520" fill="#6b7280" font-size="9">→ llm_report</text>
+  <text x="543" y="535" fill="#ef4444" font-size="9">⚠ error → END</text>
+
+  <line x1="681" y1="475" x2="701" y2="475" stroke="#7c3aed" stroke-width="1.5" marker-end="url(#arr2)"/>
+
+  <!-- Node 5 -->
+  <rect x="701" y="398" width="148" height="155" rx="8" fill="#2d1f4e" stroke="#a855f7" stroke-width="1.2"/>
+  <text x="775" y="418" text-anchor="middle" fill="#d8b4fe" font-size="10" font-weight="bold">NODE 5</text>
+  <text x="775" y="433" text-anchor="middle" fill="#c084fc" font-size="10">output_formatter</text>
+  <line x1="711" y1="440" x2="839" y2="440" stroke="#4c1d95" stroke-width="1"/>
+  <text x="711" y="455" fill="#a78bfa" font-size="9">✓ Validate 6 keys</text>
+  <text x="711" y="470" fill="#a78bfa" font-size="9">✓ Normalise decision</text>
+  <text x="711" y="485" fill="#a78bfa" font-size="9">✓ Attach metadata</text>
+  <text x="711" y="500" fill="#a78bfa" font-size="9">✓ Final trace log</text>
+  <text x="711" y="520" fill="#6b7280" font-size="9">→ final_report</text>
+
+  <!-- RAG label below node 3 -->
+  <rect x="355" y="563" width="168" height="28" rx="5" fill="#1c2537" stroke="#f59e0b" stroke-width="1"/>
+  <text x="439" y="581" text-anchor="middle" fill="#fbbf24" font-size="10">🗄️ ChromaDB · 25 RBI Chunks</text>
+  <line x1="439" y1="553" x2="439" y2="563" stroke="#f59e0b" stroke-width="1" stroke-dasharray="3,2"/>
+
+  <!-- Arrow down -->
+  <line x1="450" y1="573" x2="450" y2="594" stroke="#475569" stroke-width="1.5" marker-end="url(#arr)"/>
+
+  <!-- ───── LAYER 4: OUTPUT ───── -->
+  <rect x="30" y="594" width="840" height="108" rx="10" fill="#1f1a14" stroke="#f59e0b" stroke-width="1.5"/>
+  <text x="50" y="614" fill="#f59e0b" font-size="11" font-weight="bold">LAYER 4 — OUTPUT</text>
+
+  <!-- Streamlit UI -->
+  <rect x="60" y="622" width="250" height="66" rx="8" fill="#2d2008" stroke="#f59e0b" stroke-width="1.2"/>
+  <text x="185" y="641" text-anchor="middle" fill="#fde68a" font-size="11" font-weight="bold">🖥️ Streamlit UI Report</text>
+  <text x="75" y="658" fill="#fbbf24" font-size="10">• Risk Gauge Chart  • Feature Importance</text>
+  <text x="75" y="673" fill="#fbbf24" font-size="10">• Regulation Cards  • Agent Trace Log</text>
+
+  <!-- PDF -->
+  <rect x="360" y="622" width="250" height="66" rx="8" fill="#2d2008" stroke="#f59e0b" stroke-width="1.2"/>
+  <text x="485" y="641" text-anchor="middle" fill="#fde68a" font-size="11" font-weight="bold">📄 PDF Report (fpdf2)</text>
+  <text x="375" y="658" fill="#fbbf24" font-size="10">• Borrower Profile  • Risk Assessment</text>
+  <text x="375" y="673" fill="#fbbf24" font-size="10">• AI Analysis       • Disclaimer</text>
+
+  <!-- Deployment -->
+  <rect x="660" y="622" width="180" height="66" rx="8" fill="#2d2008" stroke="#f59e0b" stroke-width="1.2"/>
+  <text x="750" y="641" text-anchor="middle" fill="#fde68a" font-size="11" font-weight="bold">🚀 Deployed</text>
+  <text x="670" y="658" fill="#fbbf24" font-size="10">Streamlit Cloud /</text>
+  <text x="670" y="673" fill="#fbbf24" font-size="10">Hugging Face Spaces</text>
+
+  <!-- AgentState legend bottom -->
+  <text x="450" y="715" text-anchor="middle" fill="#475569" font-size="10">AgentState: borrower_profile · risk_score · risk_class · risk_drivers · retrieved_regulations · llm_report · agent_trace · error</text>
+
+  <!-- Arrow markers -->
+  <defs>
+    <marker id="arr" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L8,3 z" fill="#475569"/>
+    </marker>
+    <marker id="arr2" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L8,3 z" fill="#7c3aed"/>
+    </marker>
+  </defs>
+</svg>
