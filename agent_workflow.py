@@ -339,7 +339,27 @@ def output_formatter(state: AgentState) -> AgentState:
         report["lending_recommendation"] = "Conditional Approval"
     elif "approve" in rec.lower():
         report["lending_recommendation"] = "Approve"
-    # else keep as-is
+    elif state.get("risk_class") == "High Risk":
+        report["lending_recommendation"] = "Reject"
+    elif state.get("risk_class") == "Medium Risk":
+        report["lending_recommendation"] = "Conditional Approval"
+    else:
+        report["lending_recommendation"] = "Approve"
+
+    if not isinstance(report.get("regulatory_references"), list):
+        report["regulatory_references"] = state.get("retrieved_regulations", [])
+
+    if not str(report.get("borrower_summary", "")).strip():
+        name = state.get("borrower_profile", {}).get("NAME", "Applicant")
+        report["borrower_summary"] = (
+            f"Dear {name}, your application has been {report['lending_recommendation'].upper()}."
+        )
+
+    if not str(report.get("risk_analysis", "")).strip():
+        report["risk_analysis"] = (
+            f"The applicant is classified as {state.get('risk_class', 'Unknown')} "
+            f"with a default probability of {state.get('risk_score', 0.0):.2%}."
+        )
 
     # Add metadata
     report["risk_score"] = state.get("risk_score", 0.0)

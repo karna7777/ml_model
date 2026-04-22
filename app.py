@@ -1,15 +1,19 @@
 import os
+from html import escape
+import re
+from datetime import datetime
+
 os.environ["PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION"] = "python"
+os.environ.setdefault("MPLCONFIGDIR", "/tmp/mpl")
+os.environ.setdefault("XDG_CACHE_HOME", "/tmp")
+os.environ.setdefault("LOKY_MAX_CPU_COUNT", "4")
 
 import streamlit as st
+import streamlit.components.v1 as components
 import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt
-import seaborn as sns
 import plotly.express as px
 import plotly.graph_objects as go
-from plotly.subplots import make_subplots
-import os
 
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
@@ -30,242 +34,83 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Remove keyboard_double element completely from DOM
-st.markdown("""
-<script>
-    // Remove header element completely
-    const removeHeader = () => {
-        const header = window.parent.document.querySelector('header[data-testid="stHeader"]');
-        if (header) {
-            header.remove();
-        }
-    };
-    
-    // Run immediately and on any DOM changes
-    removeHeader();
-    setInterval(removeHeader, 100);
-    
-    // Observer to catch dynamic additions
-    const observer = new MutationObserver(removeHeader);
-    observer.observe(window.parent.document.body, { childList: true, subtree: true });
-</script>
-""", unsafe_allow_html=True)
-
-# ──────────────────────────────────────────────
-# Custom CSS — formal corporate theme
-# ──────────────────────────────────────────────
 st.markdown("""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap');
+    :root {
+        --bg-main: #1b2838;
+        --bg-panel: #223043;
+        --bg-panel-soft: #14202e;
+        --bg-input: #f8fafc;
+        --text-main: #e8edf3;
+        --text-muted: #b8c4d6;
+        --text-dark: #1f2937;
+        --accent: #3b82f6;
+        --accent-strong: #2563eb;
+        --border-soft: #2d4057;
+        --success: #00b09b;
+        --danger: #eb3349;
+    }
 
-    /* Global Typography & Theme */
     .stApp, .stApp p, .stApp span, .stApp div, .stApp label,
     .stApp h1, .stApp h2, .stApp h3, .stApp h4, .stApp h5, .stApp h6 {
-        font-family: 'Inter', sans-serif;
+        font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI",
+            sans-serif;
     }
 
     .stApp {
-        background-color: #1b2838;
-        color: #e8edf3;
-        padding-top: 0 !important;
-        margin-top: 0 !important;
-    }
-    
-    /* Push everything to top to hide keyboard_double area */
-    .main {
-        padding-top: 0 !important;
-        margin-top: -60px !important;
-    }
-    
-    /* Make any stray text in header area match background */
-    header * {
-        color: #0e1621 !important;
-        background: #0e1621 !important;
-        -webkit-text-fill-color: #0e1621 !important;
+        background-color: var(--bg-main);
+        color: var(--text-main);
     }
 
-    /* Target text contrast */
-    .stApp p, .stApp span, .stApp label, .stApp div[data-testid="stMarkdownContainer"] p,
-    .stApp h1, .stApp h2, .stApp h3, .stApp h4, .stApp h5, .stApp h6 {
-        color: #e8edf3;
+    .main .block-container {
+        padding-top: 2rem;
+        padding-bottom: 3rem;
+        max-width: 1280px;
     }
 
-    /* Hide only menu */
     #MainMenu, footer {
         display: none !important;
     }
-    
-    /* Hide header completely to remove keyboard_double */
-    header[data-testid="stHeader"], header[data-testid="stHeader"] * {
-        display: none !important;
-        visibility: hidden !important;
-        height: 0 !important;
-        opacity: 0 !important;
-        position: absolute !important;
-        top: -9999px !important;
-        left: -9999px !important;
-        pointer-events: none !important;
-        color: transparent !important;
-        background-color: transparent !important;
-    }
-    
-    /* Target keyboard_double_arrow_left specifically */
-    header button[title*="keyboard"],
-    header button[aria-label*="keyboard"],
-    header span:contains("keyboard_double_arrow_left"),
-    header *[class*="keyboard"] {
-        color: #1b2838 !important;
-        background-color: #1b2838 !important;
-        -webkit-text-fill-color: #1b2838 !important;
-        font-size: 0 !important;
-        opacity: 0 !important;
-        display: none !important;
-    }
-    
-    /* Make keyboard_double text invisible by matching background */
-    header[data-testid="stHeader"] button,
-    header[data-testid="stHeader"] button *,
-    header[data-testid="stHeader"] span,
-    header[data-testid="stHeader"] div {
-        color: #0e1621 !important;
-        background-color: #0e1621 !important;
-        font-size: 0 !important;
-        opacity: 0 !important;
-        -webkit-text-fill-color: #0e1621 !important;
-    }
-    
-    /* Hide on hover too */
-    header[data-testid="stHeader"]:hover,
-    header[data-testid="stHeader"]:hover * {
-        display: none !important;
-        visibility: hidden !important;
-        color: #0e1621 !important;
-        background-color: #0e1621 !important;
-        -webkit-text-fill-color: #0e1621 !important;
-    }
-    
-    /* Remove any top spacing from hidden header */
-    .main .block-container {
-        padding-top: 2rem !important;
-    }
-    
-    /* Hide the collapse button completely so sidebar stays open */
-    button[kind="header"], 
-    [data-testid="collapsedControl"],
-    [data-testid="stSidebarCollapsedControl"] {
-        display: none !important;
-        visibility: hidden !important;
-        pointer-events: none !important;
-    }
-    
-    /* Force sidebar to always be visible and properly sized */
-    section[data-testid="stSidebar"] {
-        display: block !important;
-        visibility: visible !important;
-        transform: translateX(0) !important;
-        left: 0 !important;
-        min-width: 244px !important;
-        max-width: 244px !important;
-    }
-    
-    /* Ensure sidebar content is not collapsed */
-    section[data-testid="stSidebar"] > div {
-        width: 244px !important;
+
+    [data-testid="stHeader"] {
+        background: rgba(27, 40, 56, 0.9);
     }
 
-    /* But keep real button text visible (Standard Streamlit Buttons) */
-    .stButton > button p, div[data-testid="stDownloadButton"] > button p {
-        font-size: 1.05rem !important;
-        color: white !important;
-    }
-
-    /* Premium Sidebar Navigation */
     section[data-testid="stSidebar"] {
-        top: 0 !important;
-        padding-top: 20px;
         background-color: #0e1621;
         border-right: 1px solid #263347;
-        width: 280px !important;
-        min-width: 280px !important;
     }
-    
-    section[data-testid="stSidebar"] div[role="radiogroup"] {
-        gap: 16px !important;
-    }
+
     section[data-testid="stSidebar"] div[role="radiogroup"] label {
-        background-color: #14202e;
-        border: 2px solid #2d4057;
+        background-color: var(--bg-panel-soft);
+        border: 1px solid var(--border-soft);
         border-radius: 14px;
-        padding: 18px 24px !important;
-        cursor: pointer;
-        transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-        min-height: 70px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
+        padding: 14px 18px !important;
+        margin-bottom: 10px;
     }
-    section[data-testid="stSidebar"] div[role="radiogroup"] label:hover {
-        background-color: #1a2d42;
-        border-color: #3b82f6;
-        transform: scale(1.02);
-        box-shadow: 0 8px 24px rgba(0,0,0,0.5);
-    }
-    section[data-testid="stSidebar"] div[role="radiogroup"] label[data-checked="true"],
-    section[data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked) {
-        background-color: #1e3a5f;
-        border-color: #2563eb;
-        box-shadow: 0 0 15px rgba(37, 99, 235, 0.4);
-    }
+
     section[data-testid="stSidebar"] div[role="radiogroup"] label p {
-        font-size: 1.05rem !important;
+        color: #ffffff !important;
         font-weight: 700 !important;
-        color: #ffffff !important;
-        margin: 0 !important;
-        text-align: center !important;
     }
 
-    /* High-Readability Inputs */
-    div[data-baseweb="select"] div, 
-    div[data-baseweb="input"] input,
-    input,
-    .stSelectbox div[role="button"],
-    .stNumberInput input {
-        color: #ffffff !important;
-        background-color: #2d3748 !important;
-        font-weight: 600 !important;
-        -webkit-text-fill-color: #ffffff !important;
-    }
-    div[role="listbox"] ul li,
-    div[data-baseweb="select"] span {
-        color: #ffffff !important;
-        background-color: #2d3748 !important;
-        font-weight: 600 !important;
-    }
-
-    /* Professional Action Buttons */
-    .stButton > button, div[data-testid="stDownloadButton"] > button {
-        background-color: #2563eb;
+    .stButton > button,
+    div[data-testid="stDownloadButton"] > button {
+        background-color: var(--accent-strong);
         color: white !important;
-        border: 2px solid #3b82f6;
+        border: 1px solid var(--accent);
         border-radius: 12px;
-        padding: 16px 32px;
         font-weight: 700;
         width: 100%;
-        box-shadow: 0 10px 20px rgba(37, 99, 235, 0.3);
-        transition: all 0.3s;
+        min-height: 48px;
     }
-    .stButton > button:hover, div[data-testid="stDownloadButton"] > button:hover {
-        background-color: #1d4ed8;
-        border-color: #2563eb;
-        box-shadow: 0 12px 28px rgba(37, 99, 235, 0.5);
-        transform: translateY(-3px);
-    }
-    
-    /* Layout Fixes */
-    h1 { padding-top: 0 !important; margin-top: -30px !important; }
-    iframe { border-radius: 10px; }
 
-    /* Section Headers & Spacing */
+    .stButton > button:hover,
+    div[data-testid="stDownloadButton"] > button:hover {
+        background-color: #1d4ed8;
+        border-color: var(--accent-strong);
+    }
+
     .section-header {
         font-size: 1.4rem;
         font-weight: 700;
@@ -275,21 +120,15 @@ st.markdown("""
         border-bottom: 2px solid #3b82f6;
     }
 
-    /* Metric Cards */
     .metric-card {
         background: rgba(255, 255, 255, 0.05);
-        backdrop-filter: blur(10px);
         border: 1px solid rgba(255, 255, 255, 0.1);
         border-radius: 15px;
         padding: 24px;
         margin-bottom: 20px;
         text-align: center;
-        transition: transform 0.3s ease;
     }
-    .metric-card:hover {
-        transform: translateY(-5px);
-        background: rgba(255, 255, 255, 0.08);
-    }
+
     .metric-label {
         font-size: 0.9rem;
         color: #a0aec0;
@@ -297,47 +136,115 @@ st.markdown("""
         letter-spacing: 1.2px;
         margin-bottom: 10px;
     }
+
     .metric-value {
-        font-size: 2.2rem;
+        font-size: 1.8rem;
         font-weight: 800;
-        color: #3b82f6;
-        text-shadow: 0 0 20px rgba(59, 130, 246, 0.3);
+        color: #ffffff;
     }
 
-    /* Dataframe Styling */
-    .stDataFrame {
-        border-radius: 10px;
-        overflow: hidden;
+    div[data-testid="stTextInput"] label,
+    div[data-testid="stNumberInput"] label,
+    div[data-testid="stSelectbox"] label,
+    div[data-testid="stSlider"] label,
+    div[data-testid="stTextArea"] label,
+    .stMarkdown,
+    .stCaption,
+    p,
+    li {
+        color: var(--text-main) !important;
     }
 
-    /* Tab Styling — High Contrast */
+    div[data-testid="stTextInput"] label p,
+    div[data-testid="stNumberInput"] label p,
+    div[data-testid="stSelectbox"] label p,
+    div[data-testid="stSlider"] label p,
+    div[data-testid="stTextArea"] label p {
+        color: var(--text-muted) !important;
+        font-weight: 600 !important;
+        letter-spacing: 0.01em;
+    }
+
+    div[data-testid="stTextInput"] input,
+    div[data-testid="stNumberInput"] input,
+    div[data-baseweb="select"] > div,
+    textarea {
+        background: var(--bg-input) !important;
+        color: var(--text-dark) !important;
+        border: 1px solid #d6dfeb !important;
+        border-radius: 12px !important;
+        box-shadow: none !important;
+    }
+
+    div[data-baseweb="select"] input,
+    div[data-baseweb="select"] span,
+    div[data-baseweb="select"] svg,
+    div[data-baseweb="select"] * {
+        color: var(--text-dark) !important;
+        fill: var(--text-dark) !important;
+    }
+
+    div[data-baseweb="popover"] * {
+        color: var(--text-dark) !important;
+    }
+
+    div[data-baseweb="popover"] {
+        background: #ffffff !important;
+        border-radius: 12px !important;
+        border: 1px solid #d6dfeb !important;
+        box-shadow: 0 16px 40px rgba(15, 23, 42, 0.18) !important;
+    }
+
+    div[data-testid="stNumberInput"] button {
+        color: var(--text-dark) !important;
+    }
+
+    div[data-testid="stSlider"] [data-baseweb="slider"] * {
+        color: var(--accent) !important;
+    }
+
+    div[data-testid="stTabs"] {
+        margin-bottom: 1rem;
+    }
+
     .stTabs [data-baseweb="tab-list"] {
         gap: 12px;
         background-color: rgba(255, 255, 255, 0.03);
         padding: 4px 4px 0 4px;
         border-radius: 8px 8px 0 0;
     }
+
     .stTabs [data-baseweb="tab"] {
         height: 54px;
         padding: 0 24px;
         background-color: rgba(255, 255, 255, 0.08) !important;
         border-radius: 8px 8px 0 0;
-        color: #e2e8f0 !important; /* Brighter grey/white */
+        color: #e2e8f0 !important;
         font-size: 1rem !important;
         font-weight: 600 !important;
         border: none !important;
     }
+
     .stTabs [aria-selected="true"] {
         background-color: rgba(37, 99, 235, 0.25) !important;
         color: #ffffff !important;
         border-bottom: 3px solid #3b82f6 !important;
     }
-    .stTabs [data-baseweb="tab"]:hover {
-        background-color: rgba(255, 255, 255, 0.12) !important;
-        color: #ffffff !important;
+
+    .streamlit-expanderHeader,
+    [data-testid="stExpander"] summary,
+    [data-testid="stExpander"] summary p,
+    [data-testid="stExpander"] details summary {
+        color: var(--text-main) !important;
+        font-weight: 700 !important;
     }
 
-    /* Result Cards for Prediction */
+    [data-testid="stExpander"] {
+        border: 1px solid rgba(255,255,255,0.08) !important;
+        border-radius: 14px !important;
+        background: rgba(255,255,255,0.03) !important;
+    }
+
     .result-approved {
         background: linear-gradient(135deg, rgba(0, 176, 155, 0.2), rgba(0, 176, 155, 0.05));
         border: 2px solid #00b09b;
@@ -350,6 +257,7 @@ st.markdown("""
         box-shadow: 0 0 30px rgba(0, 176, 155, 0.3);
         margin: 20px 0;
     }
+
     .result-rejected {
         background: linear-gradient(135deg, rgba(235, 51, 73, 0.2), rgba(235, 51, 73, 0.05));
         border: 2px solid #eb3349;
@@ -362,8 +270,130 @@ st.markdown("""
         box-shadow: 0 0 30px rgba(235, 51, 73, 0.3);
         margin: 20px 0;
     }
+
+    .report-preview {
+        background: #f8fafc;
+        border: 1px solid #d9e2ef;
+        border-radius: 18px;
+        padding: 28px;
+        margin-top: 10px;
+        color: #1f2937 !important;
+        box-shadow: 0 18px 44px rgba(15, 23, 42, 0.18);
+    }
+
+    .report-preview *,
+    .report-preview p,
+    .report-preview div,
+    .report-preview li,
+    .report-preview span,
+    .report-preview h3,
+    .report-preview h4 {
+        color: #1f2937 !important;
+    }
+
+    .report-preview-header {
+        text-align: center;
+        border-bottom: 2px solid #dbe7f5;
+        padding-bottom: 14px;
+        margin-bottom: 18px;
+    }
+
+    .report-preview-title {
+        font-size: 1.55rem;
+        font-weight: 800;
+        margin: 0 0 4px 0;
+    }
+
+    .report-preview-meta {
+        font-size: 0.92rem;
+        color: #526072 !important;
+        margin: 0;
+    }
+
+    .report-preview-status {
+        margin: 18px 0;
+        padding: 16px 18px;
+        border-radius: 14px;
+        font-weight: 800;
+        text-align: center;
+        font-size: 1.05rem;
+    }
+
+    .report-preview-status.approve {
+        background: rgba(0, 176, 155, 0.12);
+        border: 1px solid rgba(0, 176, 155, 0.35);
+        color: #047857 !important;
+    }
+
+    .report-preview-status.reject {
+        background: rgba(235, 51, 73, 0.10);
+        border: 1px solid rgba(235, 51, 73, 0.35);
+        color: #b42318 !important;
+    }
+
+    .report-preview-status.conditional {
+        background: rgba(245, 158, 11, 0.13);
+        border: 1px solid rgba(245, 158, 11, 0.40);
+        color: #b45309 !important;
+    }
+
+    .report-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 14px;
+        margin-bottom: 18px;
+    }
+
+    .report-chip {
+        background: #ffffff;
+        border: 1px solid #d9e2ef;
+        border-radius: 12px;
+        padding: 12px 14px;
+    }
+
+    .report-chip-label {
+        font-size: 0.78rem;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: #64748b !important;
+        margin-bottom: 6px;
+    }
+
+    .report-chip-value {
+        font-size: 1rem;
+        font-weight: 700;
+    }
+
+    .report-preview h4 {
+        margin: 0 0 12px 0;
+        font-size: 1.05rem;
+    }
+
+    .report-preview p {
+        margin: 0 0 10px 0;
+        line-height: 1.7;
+    }
+
+    .report-note {
+        color: #526072 !important;
+        font-size: 0.92rem;
+    }
+
+    .report-section {
+        background: #ffffff;
+        border: 1px solid #d9e2ef;
+        border-radius: 14px;
+        padding: 18px;
+        margin-bottom: 14px;
+    }
+
+    .report-section ul {
+        margin: 0;
+        padding-left: 1.2rem;
+    }
 </style>
-""",unsafe_allow_html=True)
+""", unsafe_allow_html=True)
 
 
 
@@ -526,6 +556,369 @@ def render_metric_card(label, value, emoji="📊"):
         <div class="metric-value">{display}</div>
     </div>
     """, unsafe_allow_html=True)
+
+
+def ensure_models_trained():
+    """Train models once per session so prediction and AI pages do not fail silently."""
+    if "trained_models" not in st.session_state:
+        with st.spinner("Training models for this session..."):
+            st.session_state["trained_models"] = train_models(df_clean)
+    return st.session_state["trained_models"]
+
+
+def escape_html_text(value):
+    return escape(str(value)).replace("\n", "<br>")
+
+
+def build_pdf_style_preview(profile, risk_score, risk_class, risk_drivers, regs, report):
+    recommendation = str(report.get("lending_recommendation", "Conditional Approval"))
+    recommendation_lower = recommendation.lower()
+    if "approve" in recommendation_lower and "conditional" not in recommendation_lower:
+        status_class = "approve"
+        status_text = f"STATUS: {escape_html_text(profile.get('NAME', 'Applicant').upper())}, PROPOSAL ACCEPTED"
+    elif "reject" in recommendation_lower:
+        status_class = "reject"
+        status_text = f"STATUS: {escape_html_text(profile.get('NAME', 'Applicant').upper())}, PROPOSAL REJECTED"
+    else:
+        status_class = "conditional"
+        status_text = f"STATUS: {escape_html_text(profile.get('NAME', 'Applicant').upper())}, CONDITIONAL APPROVAL"
+
+    regulation_items = "".join(
+        f"<li>{escape_html_text(reg)}</li>" for reg in (regs or report.get("regulatory_references", []))[:3]
+    )
+    if not regulation_items:
+        regulation_items = "<li>Relevant RBI-style compliance notes were not available for this run.</li>"
+
+    return f"""
+    <!doctype html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <style>
+        body {{
+          margin: 0;
+          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+          background: transparent;
+          color: #1f2937;
+        }}
+        .report-preview {{
+          background: #f8fafc;
+          border: 1px solid #d9e2ef;
+          border-radius: 18px;
+          padding: 28px;
+          color: #1f2937;
+          box-shadow: 0 18px 44px rgba(15, 23, 42, 0.18);
+        }}
+        .report-preview-header {{
+          text-align: center;
+          border-bottom: 2px solid #dbe7f5;
+          padding-bottom: 14px;
+          margin-bottom: 18px;
+        }}
+        .report-preview-title {{
+          font-size: 1.55rem;
+          font-weight: 800;
+          margin: 0 0 4px 0;
+        }}
+        .report-preview-meta {{
+          font-size: 0.92rem;
+          color: #526072;
+          margin: 0;
+        }}
+        .report-preview-status {{
+          margin: 18px 0;
+          padding: 16px 18px;
+          border-radius: 14px;
+          font-weight: 800;
+          text-align: center;
+          font-size: 1.05rem;
+        }}
+        .report-preview-status.approve {{
+          background: rgba(0, 176, 155, 0.12);
+          border: 1px solid rgba(0, 176, 155, 0.35);
+          color: #047857;
+        }}
+        .report-preview-status.reject {{
+          background: rgba(235, 51, 73, 0.10);
+          border: 1px solid rgba(235, 51, 73, 0.35);
+          color: #b42318;
+        }}
+        .report-preview-status.conditional {{
+          background: rgba(245, 158, 11, 0.13);
+          border: 1px solid rgba(245, 158, 11, 0.40);
+          color: #b45309;
+        }}
+        .report-grid {{
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 14px;
+          margin-bottom: 18px;
+        }}
+        .report-chip {{
+          background: #ffffff;
+          border: 1px solid #d9e2ef;
+          border-radius: 12px;
+          padding: 12px 14px;
+        }}
+        .report-chip-label {{
+          font-size: 0.78rem;
+          font-weight: 700;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+          color: #64748b;
+          margin-bottom: 6px;
+        }}
+        .report-chip-value {{
+          font-size: 1rem;
+          font-weight: 700;
+        }}
+        .report-section {{
+          background: #ffffff;
+          border: 1px solid #d9e2ef;
+          border-radius: 14px;
+          padding: 18px;
+          margin-bottom: 14px;
+        }}
+        .report-section h4 {{
+          margin: 0 0 12px 0;
+          font-size: 1.05rem;
+        }}
+        .report-section p {{
+          margin: 0 0 10px 0;
+          line-height: 1.7;
+        }}
+        .report-section ul {{
+          margin: 0;
+          padding-left: 1.2rem;
+        }}
+        .report-note {{
+          color: #526072;
+          font-size: 0.92rem;
+        }}
+      </style>
+    </head>
+    <body>
+      <div class="report-preview">
+        <div class="report-preview-header">
+          <div class="report-preview-title">AI Lending Assessment Report</div>
+          <p class="report-preview-meta">Generated on: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}</p>
+        </div>
+
+        <div class="report-preview-status {status_class}">
+          {status_text}
+        </div>
+
+        <div class="report-grid">
+          <div class="report-chip">
+            <div class="report-chip-label">Risk Score</div>
+            <div class="report-chip-value">{risk_score:.4f}</div>
+          </div>
+          <div class="report-chip">
+            <div class="report-chip-label">Risk Class</div>
+            <div class="report-chip-value">{escape_html_text(risk_class)}</div>
+          </div>
+          <div class="report-chip">
+            <div class="report-chip-label">Key Drivers</div>
+            <div class="report-chip-value">{escape_html_text(", ".join(risk_drivers) if risk_drivers else "N/A")}</div>
+          </div>
+          <div class="report-chip">
+            <div class="report-chip-label">Recommendation</div>
+            <div class="report-chip-value">{escape_html_text(recommendation)}</div>
+          </div>
+        </div>
+
+        <div class="report-section">
+          <h4>1. Borrower Profile</h4>
+          <p><strong>Name:</strong> {escape_html_text(profile.get("NAME", "Applicant"))}</p>
+          <p><strong>Occupation:</strong> {escape_html_text(profile.get("JOB", "N/A"))}</p>
+          <p><strong>Annual Income:</strong> INR {float(profile.get("AMT_INCOME_TOTAL", 0)):,.0f}</p>
+          <p><strong>Education:</strong> {escape_html_text(profile.get("NAME_EDUCATION_TYPE", "N/A"))}</p>
+          <p><strong>Housing:</strong> {escape_html_text(profile.get("NAME_HOUSING_TYPE", "N/A"))}</p>
+        </div>
+
+        <div class="report-section">
+          <h4>2. Borrower Summary</h4>
+          <p>{escape_html_text(report.get("borrower_summary", "N/A"))}</p>
+        </div>
+
+        <div class="report-section">
+          <h4>3. Risk Analysis</h4>
+          <p>{escape_html_text(report.get("risk_analysis", "N/A"))}</p>
+        </div>
+
+        <div class="report-section">
+          <h4>4. Recommended Action</h4>
+          <p>{escape_html_text(report.get("recommended_action", "N/A"))}</p>
+        </div>
+
+        <div class="report-section">
+          <h4>5. Regulatory Context</h4>
+          <ul>{regulation_items}</ul>
+        </div>
+
+        <div class="report-section">
+          <h4>6. Disclaimer</h4>
+          <p class="report-note">{escape_html_text(report.get("disclaimer", "N/A"))}</p>
+        </div>
+      </div>
+    </body>
+    </html>
+    """
+
+
+def extract_number(text, keywords, default):
+    for keyword in keywords:
+        pattern = rf"(?:{keyword})(?:\s+\w+){{0,4}}\s*(?:of|is|if|=|:|-)?\s*([\d][\d,.]*)"
+        for match in re.finditer(pattern, text, flags=re.IGNORECASE):
+            value = match.group(1).replace(",", "").strip()
+            if value:
+                return float(value)
+    return default
+
+
+def extract_total_income(text, default):
+    patterns = [
+        r"total income\s*(?:of|is|=|:|-)?\s*([\d][\d,.]*)",
+        r"income\s*(?:of|is|=|:|-)?\s*([\d][\d,.]*)",
+        r"salary\s*(?:of|is|=|:|-)?\s*([\d][\d,.]*)",
+    ]
+    for pattern in patterns:
+        match = re.search(pattern, text, flags=re.IGNORECASE)
+        if match:
+            return float(match.group(1).replace(",", ""))
+    return default
+
+
+def extract_age_value(text, default):
+    patterns = [
+        r"age\s*(?:of|is|if|=|:|-)?\s*(\d{1,2}(?:\.\d+)?)",
+        r"(\d{1,2})\s*[- ]?year[s]?\s*old",
+        r"aged\s*(\d{1,2}(?:\.\d+)?)",
+    ]
+    for pattern in patterns:
+        match = re.search(pattern, text, flags=re.IGNORECASE)
+        if match:
+            return float(match.group(1))
+    return default
+
+
+def parse_children(text: str) -> str:
+    lowered = text.lower()
+    if any(token in lowered for token in ["no child", "0 child", "without children", "no children"]):
+        return "No children"
+    if any(token in lowered for token in ["has a son", "has a daughter", "one son", "one daughter", "a child"]):
+        return "1 children"
+    if re.search(r"\b1\s+child\b", lowered):
+        return "1 children"
+    if re.search(r"\b([2-9]|\d{2,})\s+children?\b", lowered):
+        return "2+ children"
+    return "No children"
+
+
+def parse_borrower_query(query_text: str) -> dict:
+    q = query_text.lower()
+
+    name_match = re.search(
+        r"(?:name\s*(?:is|:)?|myself|i\s*am|this\s*is)\s*([A-Za-z]+(?:\s+[A-Za-z]+)?)",
+        query_text,
+        re.IGNORECASE,
+    )
+    extracted_name = name_match.group(1).strip().title() if name_match else "Applicant"
+    if extracted_name == "Applicant":
+        first_word_match = re.match(r"\s*([A-Za-z]+)", query_text)
+        if first_word_match:
+            extracted_name = first_word_match.group(1).strip().title()
+
+    gender = "F" if any(word in q for word in ["female", "woman", "girl"]) else "M"
+    if any(word in q for word in ["male", "man", "boy"]):
+        gender = "M"
+
+    own_car = "N" if any(phrase in q for phrase in ["no car", "does not own a car", "without car"]) else "Y"
+    if not any(word in q for word in ["car", "vehicle"]):
+        own_car = "N"
+
+    own_realty = "N" if any(
+        phrase in q for phrase in ["no house", "no property", "rented apartment", "with parents", "without house"]
+    ) else "Y"
+    if not any(word in q for word in ["house", "apartment", "property", "realty", "parents", "rent"]):
+        own_realty = "N"
+
+    income = extract_total_income(q, 200000)
+    age = extract_age_value(q, 35)
+    employed = extract_number(q, ["employed", "experience", "working", "years employed"], 5)
+
+    education_map = {
+        "academic degree": "Academic degree",
+        "higher education": "Higher education",
+        "graduate": "Higher education",
+        "incomplete higher": "Incomplete higher",
+        "lower secondary": "Lower secondary",
+        "secondary": "Secondary / secondary special",
+    }
+    education_q = "Secondary / secondary special"
+    for key, value in education_map.items():
+        if key in q:
+            education_q = value
+            break
+
+    family_map = {
+        "married": "Married",
+        "single": "Single / not married",
+        "civil marriage": "Civil marriage",
+        "separated": "Separated",
+        "widow": "Widow",
+        "widowed": "Widow",
+    }
+    family_q = "Single / not married"
+    for key, value in family_map.items():
+        if key in q:
+            family_q = value
+            break
+
+    housing_map = {
+        "with parents": "With parents",
+        "rented apartment": "Rented apartment",
+        "rent": "Rented apartment",
+        "municipal": "Municipal apartment",
+        "co-op": "Co-op apartment",
+        "office apartment": "Office apartment",
+        "house": "House / apartment",
+        "apartment": "House / apartment",
+        "property": "House / apartment",
+    }
+    housing_q = "House / apartment"
+    for key, value in housing_map.items():
+        if key in q:
+            housing_q = value
+            break
+
+    job_list = [
+        "Managers", "Private service staff", "Laborers", "Core staff",
+        "Drivers", "High skill tech staff", "Realty agents", "Secretaries",
+        "Accountants", "Sales staff", "Medicine staff", "Waiters/barmen staff",
+        "Low-skill Laborers", "Cleaning staff", "HR staff", "Cooking staff",
+        "Security staff", "IT staff",
+    ]
+    job_q = "Laborers"
+    for job_name in job_list:
+        if job_name.lower() in q:
+            job_q = job_name
+            break
+
+    return {
+        "NAME": extracted_name,
+        "CODE_GENDER": gender,
+        "FLAG_OWN_CAR": own_car,
+        "FLAG_OWN_REALTY": own_realty,
+        "CNT_CHILDREN": parse_children(q),
+        "AMT_INCOME_TOTAL": float(income),
+        "NAME_EDUCATION_TYPE": education_q,
+        "NAME_FAMILY_STATUS": family_q,
+        "NAME_HOUSING_TYPE": housing_q,
+        "JOB": job_q,
+        "AGE": float(age),
+        "EMPLOYED_YEARS": float(employed),
+    }
 
 
 # ──────────────────────────────────────────────
@@ -808,8 +1201,8 @@ elif page == "🔮 Predict Approval":
     st.markdown("Enter applicant details to predict if the credit card will be **approved** or **rejected**.")
 
     if "trained_models" not in st.session_state:
-        st.warning("⚠️ Please go to **🤖 Model Training** and train models first.")
-        st.stop()
+        st.info("Models were not trained yet for this session. Training them automatically now.")
+        ensure_models_trained()
 
     results = st.session_state["trained_models"]
     model_names = [k for k in results if k not in ("feature_names", "scaler")]
@@ -1162,11 +1555,11 @@ elif page == "🤖 AI Lending Assistant":
             f'<div style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);'
             f'border-radius:12px;padding:24px;margin-bottom:12px;">'
             f'<p style="color:#e8edf3;font-size:0.95rem;line-height:1.7;">'
-            f'<strong>Summary:</strong> {report.get("borrower_summary", "N/A")}</p>'
+            f'<strong>Summary:</strong> {escape_html_text(report.get("borrower_summary", "N/A"))}</p>'
             f'<p style="color:#e8edf3;font-size:0.95rem;line-height:1.7;margin-top:12px;">'
-            f'<strong>Risk Analysis:</strong> {report.get("risk_analysis", "N/A")}</p>'
+            f'<strong>Risk Analysis:</strong> {escape_html_text(report.get("risk_analysis", "N/A"))}</p>'
             f'<p style="color:#cbd5e1;font-size:0.95rem;line-height:1.7;margin-top:12px;">'
-            f'<strong>Recommended Action:</strong> {report.get("recommended_action", "N/A")}</p>'
+            f'<strong>Recommended Action:</strong> {escape_html_text(report.get("recommended_action", "N/A"))}</p>'
             f'</div>',
             unsafe_allow_html=True,
         )
@@ -1175,7 +1568,7 @@ elif page == "🤖 AI Lending Assistant":
         st.markdown(
             f'<div style="background:rgba(100,100,100,0.15);border-radius:8px;'
             f'padding:16px 20px;margin-top:20px;color:#718096;font-size:0.82rem;">'
-            f'⚖️ <strong>Disclaimer:</strong> {report.get("disclaimer", "N/A")}</div>',
+            f'⚖️ <strong>Disclaimer:</strong> {escape_html_text(report.get("disclaimer", "N/A"))}</div>',
             unsafe_allow_html=True,
         )
 
@@ -1189,13 +1582,18 @@ elif page == "🤖 AI Lending Assistant":
             data=pdf_bytes,
             file_name="ai_lending_report.pdf",
             mime="application/pdf",
+            on_click="ignore",
+            use_container_width=True,
         )
 
-        with st.expander("📄 View PDF Online"):
-            import base64
-            b64_pdf = base64.b64encode(pdf_bytes).decode('utf-8')
-            pdf_display = f'<iframe src="data:application/pdf;base64,{b64_pdf}" width="100%" height="800" type="application/pdf"></iframe>'
-            st.markdown(pdf_display, unsafe_allow_html=True)
+        with st.expander("📄 Report Preview", expanded=True):
+            components.html(
+                build_pdf_style_preview(profile, risk_score, risk_class, risk_drivers, regs, report),
+                height=1400,
+                scrolling=True,
+            )
+
+
 
     # ── Tabs ──
     tab1, tab2 = st.tabs(["💬 Query Mode", "📋 Form Assessment"])
@@ -1221,121 +1619,20 @@ elif page == "🤖 AI Lending Assistant":
             valid_kws = ["income", "salary", "age", "year", "employed", "car", "house", "loan"]
             q = query_text.lower()
             if "trained_models" not in st.session_state:
-                st.warning("⚠️ Please train models first on the Model Training page.")
-            elif not query_text.strip() or not any(kw in q for kw in valid_kws):
+                st.info("Models were not trained yet for this session. Training them automatically now.")
+                ensure_models_trained()
+            if not query_text.strip() or not any(kw in q for kw in valid_kws):
                 st.error("Invalid input. Please provide valid borrower details like age, income, and employment.")
             else:
-                # ── Parse query into profile dict ──
-                import re as _re
-                # Improved name extraction: matches "name is X", "myself X", "i am X", "this is X"
-                name_match = _re.search(r"(?:name\s*(?:is|:)?|myself|i\s*am|this\s*is)\s*([A-Za-z]+)", query_text, _re.IGNORECASE)
-                extracted_name = name_match.group(1).capitalize() if name_match else "Unknown"
-
-
-                def _extract_number(text, keywords, default):
-                    import re as _re
-                    for kw in keywords:
-                        # Improved: handles "income of 100000", "income is 100000", etc.
-                        pattern = rf"{kw}\s*(?:of|is|:|-)?\s*([\d,.]+)"
-                        # Search forward
-                        m = _re.search(pattern, text)
-                        if m:
-                            val_str = m.group(1).replace(",", "")
-                            if val_str.replace(".", "").isdigit():
-                                return float(val_str)
-                        # Search backward (e.g., "7 years of experience" -> look for number before)
-                        pattern_back = rf"([\d,.]+)\s*(?:years?\s+(?:of\s+)?){kw}"
-                        m_back = _re.search(pattern_back, text)
-                        if m_back:
-                            val_str = m_back.group(1).replace(",", "")
-                            if val_str.replace(".", "").isdigit():
-                                return float(val_str)
-                    return default
-
-                gender = "M" if "male" in q and "female" not in q else "F"
-                own_car = "Y" if "car" in q and "no car" not in q else "N"
-                own_realty = "Y" if any(w in q for w in ["house", "apartment", "realty", "property"]) and "no house" not in q else "N"
-
-                if "no child" in q or "0 child" in q:
-                    cnt_children = "No children"
-                elif "2" in q and "child" in q:
-                    cnt_children = "2+ children"
-                elif "1 child" in q:
-                    cnt_children = "1 children"
-                else:
-                    cnt_children = "No children"
-
-                income = _extract_number(q, ["income", "salary", "earning"], 200000)
-                age = _extract_number(q, ["age", "year.?old", "aged"], 35)
-                employed = _extract_number(q, ["employed", "experience", "working", "years employed"], 5)
-
-                edu_map = {
-                    "higher education": "Higher education",
-                    "academic": "Academic degree",
-                    "secondary": "Secondary / secondary special",
-                    "incomplete": "Incomplete higher",
-                    "lower secondary": "Lower secondary",
-                }
-                education_q = "Secondary / secondary special"
-                for k, v in edu_map.items():
-                    if k in q:
-                        education_q = v
-                        break
-
-                family_map = {
-                    "marr": "Married", "mari": "Married", "sing": "Single / not married",
-                    "civil": "Civil marriage", "sep": "Separated", "widow": "Widow",
-                }
-                family_q = "Single / not married"
-                for k, v in family_map.items():
-                    if k in q:
-                        family_q = v
-                        break
-
-                housing_map = {
-                    "house": "House / apartment", "apartment": "House / apartment",
-                    "parent": "With parents", "rent": "Rented apartment",
-                    "municipal": "Municipal apartment", "co-op": "Co-op apartment",
-                    "office": "Office apartment",
-                }
-                housing_q = "House / apartment"
-                for k, v in housing_map.items():
-                    if k in q:
-                        housing_q = v
-                        break
-
-                job_list = [
-                    "Managers", "Private service staff", "Laborers", "Core staff",
-                    "Drivers", "High skill tech staff", "Realty agents", "Secretaries",
-                    "Accountants", "Sales staff", "Medicine staff", "Waiters/barmen staff",
-                    "Low-skill Laborers", "Cleaning staff", "HR staff", "Cooking staff",
-                    "Security staff", "IT staff",
-                ]
-                job_q = "Laborers"
-                for j in job_list:
-                    if j.lower() in q:
-                        job_q = j
-                        break
-
-                parsed_profile = {
-                    "NAME": extracted_name,
-                    "CODE_GENDER": gender,
-                    "FLAG_OWN_CAR": own_car,
-                    "FLAG_OWN_REALTY": own_realty,
-                    "CNT_CHILDREN": cnt_children,
-                    "AMT_INCOME_TOTAL": income,
-                    "NAME_EDUCATION_TYPE": education_q,
-                    "NAME_FAMILY_STATUS": family_q,
-                    "NAME_HOUSING_TYPE": housing_q,
-                    "JOB": job_q,
-                    "AGE": age,
-                    "EMPLOYED_YEARS": employed,
-                }
+                parsed_profile = parse_borrower_query(query_text)
 
                 st.markdown("**Parsed profile:**")
                 profile_html = "<div style='background:rgba(255,255,255,0.05); padding:15px; border-radius:10px; font-family:monospace; font-size:14px; color:#cbd5e1;'>"
                 for k, v in parsed_profile.items():
-                    profile_html += f"<span style='color:#3b82f6; font-weight:700;'>\"{k}\"</span>: {v}<br>"
+                    profile_html += (
+                        f"<span style='color:#3b82f6; font-weight:700;'>\"{escape_html_text(k)}\"</span>: "
+                        f"{escape_html_text(v)}<br>"
+                    )
                 profile_html += "</div><br>"
                 st.markdown(profile_html, unsafe_allow_html=True)
 
@@ -1351,92 +1648,93 @@ elif page == "🤖 AI Lending Assistant":
     # ──────────────────────────────────────────────
     with tab2:
         if "trained_models" not in st.session_state:
-            st.warning("⚠️ Please train models first on the Model Training page.")
-        else:
-            st.markdown('<div class="section-header">📝 Applicant Details</div>', unsafe_allow_html=True)
-            applicant_name_f = st.text_input("Enter your name", key="form_name")
+            st.info("Models were not trained yet for this session. Training them automatically now.")
+            ensure_models_trained()
 
-            f_col1, f_col2, f_col3 = st.columns(3)
+        st.markdown('<div class="section-header">📝 Applicant Details</div>', unsafe_allow_html=True)
+        applicant_name_f = st.text_input("Enter your name", key="form_name")
 
-            with f_col1:
-                f_gender = st.selectbox("Gender", ["F", "M"], key="f_gender")
-                f_car = st.selectbox("Owns a Car?", ["Y", "N"], key="f_car")
-                f_realty = st.selectbox("Owns Realty?", ["Y", "N"], key="f_realty")
-                f_children = st.selectbox("Number of Children",
-                                          ["No children", "1 children", "2+ children"],
-                                          key="f_children")
+        f_col1, f_col2, f_col3 = st.columns(3)
 
-            with f_col2:
-                f_income = st.number_input("Annual Income (₹)", min_value=0,
-                                            max_value=10000000, value=200000,
-                                            step=10000, key="f_income")
-                f_age = st.slider("Age (years)", min_value=18, max_value=70,
-                                   value=35, key="f_age")
-                f_employed = st.slider("Years Employed", min_value=0.0,
-                                        max_value=40.0, value=5.0, step=0.5,
-                                        key="f_employed")
+        with f_col1:
+            f_gender = st.selectbox("Gender", ["F", "M"], key="f_gender")
+            f_car = st.selectbox("Owns a Car?", ["Y", "N"], key="f_car")
+            f_realty = st.selectbox("Owns Realty?", ["Y", "N"], key="f_realty")
+            f_children = st.selectbox("Number of Children",
+                                      ["No children", "1 children", "2+ children"],
+                                      key="f_children")
 
-            with f_col3:
-                f_education = st.selectbox("Education", [
-                    "Secondary / secondary special",
-                    "Higher education",
-                    "Incomplete higher",
-                    "Lower secondary",
-                    "Academic degree",
-                ], key="f_education")
-                f_family = st.selectbox("Family Status", [
-                    "Married",
-                    "Single / not married",
-                    "Civil marriage",
-                    "Separated",
-                    "Widow",
-                ], key="f_family")
-                f_housing = st.selectbox("Housing Type", [
-                    "House / apartment",
-                    "With parents",
-                    "Rented apartment",
-                    "Municipal apartment",
-                    "Co-op apartment",
-                    "Office apartment",
-                ], key="f_housing")
+        with f_col2:
+            f_income = st.number_input("Annual Income (₹)", min_value=0,
+                                        max_value=10000000, value=200000,
+                                        step=10000, key="f_income")
+            f_age = st.slider("Age (years)", min_value=18, max_value=70,
+                               value=35, key="f_age")
+            f_employed = st.slider("Years Employed", min_value=0.0,
+                                    max_value=40.0, value=5.0, step=0.5,
+                                    key="f_employed")
 
-            f_job = st.selectbox("Job Type", [
-                "Managers", "Private service staff", "Laborers", "Core staff",
-                "Drivers", "High skill tech staff", "Realty agents", "Secretaries",
-                "Accountants", "Sales staff", "Medicine staff", "Waiters/barmen staff",
-                "Low-skill Laborers", "Cleaning staff", "HR staff", "Cooking staff",
-                "Security staff", "IT staff",
-            ], key="f_job")
+        with f_col3:
+            f_education = st.selectbox("Education", [
+                "Secondary / secondary special",
+                "Higher education",
+                "Incomplete higher",
+                "Lower secondary",
+                "Academic degree",
+            ], key="f_education")
+            f_family = st.selectbox("Family Status", [
+                "Married",
+                "Single / not married",
+                "Civil marriage",
+                "Separated",
+                "Widow",
+            ], key="f_family")
+            f_housing = st.selectbox("Housing Type", [
+                "House / apartment",
+                "With parents",
+                "Rented apartment",
+                "Municipal apartment",
+                "Co-op apartment",
+                "Office apartment",
+            ], key="f_housing")
 
-            st.markdown("")
+        f_job = st.selectbox("Job Type", [
+            "Managers", "Private service staff", "Laborers", "Core staff",
+            "Drivers", "High skill tech staff", "Realty agents", "Secretaries",
+            "Accountants", "Sales staff", "Medicine staff", "Waiters/barmen staff",
+            "Low-skill Laborers", "Cleaning staff", "HR staff", "Cooking staff",
+            "Security staff", "IT staff",
+        ], key="f_job")
 
-            if st.button("🚀 Run AI Assessment", key="form_run", type="primary"):
-                if not applicant_name_f.strip():
-                    st.error("Invalid input. Please provide all required and valid details.")
-                else:
-                    form_profile = {
-                        "NAME": applicant_name_f.strip(),
-                        "CODE_GENDER": f_gender,
-                        "FLAG_OWN_CAR": f_car,
-                        "FLAG_OWN_REALTY": f_realty,
-                        "CNT_CHILDREN": f_children,
-                        "AMT_INCOME_TOTAL": float(f_income),
-                        "NAME_EDUCATION_TYPE": f_education,
-                        "NAME_FAMILY_STATUS": f_family,
-                        "NAME_HOUSING_TYPE": f_housing,
-                        "JOB": f_job,
-                        "AGE": float(f_age),
-                        "EMPLOYED_YEARS": float(f_employed),
-                    }
+        st.markdown("")
 
-                    try:
-                        from agent_workflow import run_agent
-                        with st.spinner("🤖 Agent is analyzing the borrower profile..."):
-                            st.session_state["agent_state"] = run_agent(form_profile)
-                    except Exception as e:
-                        st.error(f"❌ Agent execution failed: {e}")
+        if st.button("🚀 Run AI Assessment", key="form_run", type="primary"):
+            if not applicant_name_f.strip():
+                st.error("Invalid input. Please provide all required and valid details.")
+            else:
+                form_profile = {
+                    "NAME": applicant_name_f.strip(),
+                    "CODE_GENDER": f_gender,
+                    "FLAG_OWN_CAR": f_car,
+                    "FLAG_OWN_REALTY": f_realty,
+                    "CNT_CHILDREN": f_children,
+                    "AMT_INCOME_TOTAL": float(f_income),
+                    "NAME_EDUCATION_TYPE": f_education,
+                    "NAME_FAMILY_STATUS": f_family,
+                    "NAME_HOUSING_TYPE": f_housing,
+                    "JOB": f_job,
+                    "AGE": float(f_age),
+                    "EMPLOYED_YEARS": float(f_employed),
+                }
+
+                try:
+                    from agent_workflow import run_agent
+                    with st.spinner("🤖 Agent is analyzing the borrower profile..."):
+                        st.session_state["agent_state"] = run_agent(form_profile)
+                except Exception as e:
+                    st.error(f"❌ Agent execution failed: {e}")
 
     # ── Render active cross-tab state ──
-    if "agent_state" in st.session_state:
+    if st.session_state.get("agent_state"):
         st.markdown("<hr>", unsafe_allow_html=True)
         display_agent_report(st.session_state["agent_state"])

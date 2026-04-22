@@ -94,4 +94,9 @@ def create_pdf_report(profile, risk_score, risk_class, risk_drivers, regs, repor
     pdf.set_text_color(100, 100, 100)
     pdf.multi_cell(0, 5, _sanitize(f"Disclaimer: {report.get('disclaimer', 'N/A')}"))
     
-    return bytes(pdf.output())
+    pdf_blob = pdf.output(dest="S")
+    if isinstance(pdf_blob, bytearray):
+        return bytes(pdf_blob)
+    if isinstance(pdf_blob, bytes):
+        return pdf_blob
+    return str(pdf_blob).encode("latin-1", "ignore")

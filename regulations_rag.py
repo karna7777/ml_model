@@ -1,23 +1,21 @@
 """
 regulations_rag.py
 ──────────────────
-RAG (Retrieval-Augmented Generation) module for the Credit Card Approval
+Lightweight regulation retrieval for the Credit Card Approval
 Lending Decision Support system.
 
-Uses ChromaDB for vector storage and sentence-transformers for embeddings.
-Contains 25 realistic RBI / lending regulation guideline chunks.
+This module intentionally avoids runtime embedding downloads so the
+Streamlit app remains stable on local machines and hosted environments.
+It uses deterministic lexical scoring over a curated RBI-style rule set.
 """
 
-import os
-import chromadb
-from chromadb.config import Settings
+from __future__ import annotations
 
-# ────────────────────────────────────────────────────────────────
-# 25 Regulation / Guideline chunks (RBI-style lending rules)
-# ────────────────────────────────────────────────────────────────
+import re
+from collections import Counter
+
 
 REGULATION_CHUNKS = [
-    # 1
     (
         "reg_001",
         "RBI Guidelines on Minimum Creditworthiness Threshold: "
@@ -27,17 +25,15 @@ REGULATION_CHUNKS = [
         "credit products. Borrowers falling below this threshold must be subject to "
         "enhanced due diligence and higher provisioning norms."
     ),
-    # 2
     (
         "reg_002",
         "Income-to-Loan Ratio Limits: "
         "The Equated Monthly Installment (EMI) for any new credit facility should not "
-        "exceed 40%% of the borrower's net monthly income. Lenders must verify income "
+        "exceed 40% of the borrower's net monthly income. Lenders must verify income "
         "through salary slips, bank statements, or IT returns for the preceding two "
         "financial years. Any deviation must be approved by the credit committee and "
         "documented with justification."
     ),
-    # 3
     (
         "reg_003",
         "Employment Stability Requirement: "
@@ -46,7 +42,6 @@ REGULATION_CHUNKS = [
         "income instability and should be flagged for additional review. Employment tenure "
         "is a key factor in assessing repayment capacity."
     ),
-    # 4
     (
         "reg_004",
         "Self-Employed Borrower Documentation: "
@@ -55,7 +50,6 @@ REGULATION_CHUNKS = [
         "account statements for the last 12 months. The average of the last 3 years' net "
         "income shall be used for eligibility computation."
     ),
-    # 5
     (
         "reg_005",
         "Age Criteria for Credit Facility: "
@@ -65,7 +59,6 @@ REGULATION_CHUNKS = [
         "65 years at loan maturity. Age is used as a proxy for earning horizon and "
         "repayment capacity."
     ),
-    # 6
     (
         "reg_006",
         "Credit History — Default Disqualification: "
@@ -75,7 +68,6 @@ REGULATION_CHUNKS = [
         "bureau. Accounts with DPD (Days Past Due) greater than 90 days in the last "
         "2 years constitute adverse credit history."
     ),
-    # 7
     (
         "reg_007",
         "CIBIL Score Threshold for Standard Loans: "
@@ -85,16 +77,14 @@ REGULATION_CHUNKS = [
         "rate tier. Scores below 600 generally warrant rejection unless supported by "
         "collateral or a co-applicant with adequate score."
     ),
-    # 8
     (
         "reg_008",
         "Debt-to-Income Ratio Limit: "
         "The total monthly debt obligations of the borrower, including existing EMIs, "
-        "credit card minimum payments, and proposed new EMI, must not exceed 50%% of "
+        "credit card minimum payments, and proposed new EMI, must not exceed 50% of "
         "the gross monthly income. This ratio is a critical measure of the borrower's "
         "financial leverage and repayment sustainability."
     ),
-    # 9
     (
         "reg_009",
         "Co-Applicant Rules for Joint Applications: "
@@ -103,7 +93,6 @@ REGULATION_CHUNKS = [
         "eligibility computation. Both applicants share equal liability for repayment. "
         "Each applicant's credit history must be evaluated independently."
     ),
-    # 10
     (
         "reg_010",
         "Housing Ownership as Positive Credit Signal: "
@@ -112,7 +101,6 @@ REGULATION_CHUNKS = [
         "positive factor in credit scoring models and may qualify the borrower for "
         "preferential interest rates."
     ),
-    # 11
     (
         "reg_011",
         "Number of Dependents Impact on Repayment Capacity: "
@@ -121,7 +109,6 @@ REGULATION_CHUNKS = [
         "in the number of dependents when calculating the adjusted net income available "
         "for debt servicing."
     ),
-    # 12
     (
         "reg_012",
         "Gender-Neutral Lending Mandate (RBI Fair Lending Code): "
@@ -130,7 +117,6 @@ REGULATION_CHUNKS = [
         "solely based on gender. All lending criteria must be applied uniformly across "
         "all applicants regardless of gender identity."
     ),
-    # 13
     (
         "reg_013",
         "Education Level as Proxy for Income Stability: "
@@ -139,7 +125,6 @@ REGULATION_CHUNKS = [
         "alone should not be a deciding factor, it may be used as one of several inputs "
         "in the credit scoring model along with employment history and income."
     ),
-    # 14
     (
         "reg_014",
         "Family Status and Financial Stability: "
@@ -148,7 +133,6 @@ REGULATION_CHUNKS = [
         "a sole criterion for credit decisions. It may serve as supplementary "
         "information in conjunction with income, employment, and credit history data."
     ),
-    # 15
     (
         "reg_015",
         "Anti-Discrimination Clause — RBI Fair Lending: "
@@ -157,7 +141,6 @@ REGULATION_CHUNKS = [
         "characteristic. All credit decisions must be based on objective, quantifiable "
         "financial criteria. Any violation is subject to regulatory penalty."
     ),
-    # 16
     (
         "reg_016",
         "Responsible AI in Credit Decisions — Explainability Requirement: "
@@ -166,7 +149,6 @@ REGULATION_CHUNKS = [
         "understand the key factors that influenced the credit decision. Black-box models "
         "without interpretability layers are discouraged by the RBI for retail lending."
     ),
-    # 17
     (
         "reg_017",
         "Data Privacy in Credit Scoring — RBI IT Act Compliance: "
@@ -175,16 +157,14 @@ REGULATION_CHUNKS = [
         "data protection. Data must be stored securely, used only for the stated purpose, "
         "and not shared with third parties without the borrower's explicit consent."
     ),
-    # 18
     (
         "reg_018",
         "Maximum Loan-to-Value Ratio for Secured Credit: "
         "For secured credit facilities (e.g., home loans, vehicle loans), the loan amount "
         "should not exceed the prescribed Loan-to-Value (LTV) ratio. For housing loans, "
-        "the maximum LTV is 90%% for loans up to Rs 30 lakh, 80%% for loans between "
-        "Rs 30-75 lakh, and 75%% for loans above Rs 75 lakh."
+        "the maximum LTV is 90% for loans up to Rs 30 lakh, 80% for loans between "
+        "Rs 30-75 lakh, and 75% for loans above Rs 75 lakh."
     ),
-    # 19
     (
         "reg_019",
         "Regulatory Requirement for Rejection Reason Disclosure: "
@@ -193,7 +173,6 @@ REGULATION_CHUNKS = [
         "rejection notices without specific reasons are not compliant with RBI's Fair "
         "Practices Code. This includes adverse action notices referencing credit bureau data."
     ),
-    # 20
     (
         "reg_020",
         "Periodic Credit Review Requirements: "
@@ -202,16 +181,14 @@ REGULATION_CHUNKS = [
         "the borrower's credit score, income changes, and overall debt position to "
         "determine ongoing eligibility and credit limit adjustments."
     ),
-    # 21
     (
         "reg_021",
         "Microfinance Borrower Protections: "
         "Microfinance borrowers are entitled to additional protections including cap on "
-        "total indebtedness (maximum 2 MFI lenders), cap on repayment obligation (50%% of "
+        "total indebtedness (maximum 2 MFI lenders), cap on repayment obligation (50% of "
         "household income), and mandatory cooling-off period between loans. Aggressive "
         "recovery practices are strictly prohibited."
     ),
-    # 22
     (
         "reg_022",
         "NPA Classification Rules: "
@@ -220,7 +197,6 @@ REGULATION_CHUNKS = [
         "date. Once classified as NPA, the account ceases to generate interest income "
         "for the lender and must be provisioned as per RBI norms."
     ),
-    # 23
     (
         "reg_023",
         "Digital Lending Guidelines — RBI 2022 Circular: "
@@ -230,7 +206,6 @@ REGULATION_CHUNKS = [
         "credit limit increases without consent, and direct fund disbursement to "
         "borrower's bank account only."
     ),
-    # 24
     (
         "reg_024",
         "Grievance Redressal Mechanism: "
@@ -239,7 +214,6 @@ REGULATION_CHUNKS = [
         "internal ombudsman, and final recourse to the RBI Integrated Ombudsman Scheme. "
         "Complaints must be acknowledged within 3 working days and resolved within 30 days."
     ),
-    # 25
     (
         "reg_025",
         "Environmental and Social Risk in Lending (ESG): "
@@ -251,100 +225,104 @@ REGULATION_CHUNKS = [
 ]
 
 
-# ────────────────────────────────────────────────────────────────
-# ChromaDB setup (persistent storage)
-# ────────────────────────────────────────────────────────────────
+_TOKEN_PATTERN = re.compile(r"[a-z0-9]+")
+_STOPWORDS = {
+    "a", "an", "and", "as", "at", "be", "borrower", "by", "card", "compliance",
+    "credit", "criteria", "for", "from", "in", "is", "lending", "loan", "of",
+    "on", "or", "risk", "the", "to", "with",
+}
+_REGULATION_TAGS = {
+    "reg_001": {"creditworthiness", "credit score", "cibil", "threshold", "due diligence"},
+    "reg_002": {"income", "salary", "emi", "income ratio", "affordability"},
+    "reg_003": {"employment", "employed", "job", "experience", "tenure", "stability"},
+    "reg_004": {"self employed", "itr", "financial statements", "documentation"},
+    "reg_005": {"age", "retirement", "earning horizon"},
+    "reg_006": {"default", "write off", "settlement", "dpd", "credit history"},
+    "reg_007": {"cibil", "score", "reject", "co applicant", "collateral"},
+    "reg_008": {"debt", "income", "emi", "financial leverage", "repayment"},
+    "reg_009": {"joint", "co applicant", "spouse", "combined income"},
+    "reg_010": {"house", "apartment", "property", "realty", "ownership"},
+    "reg_011": {"children", "dependents", "family", "repayment capacity"},
+    "reg_012": {"gender", "fair lending", "gender neutral"},
+    "reg_013": {"education", "graduate", "income stability"},
+    "reg_014": {"married", "family status", "family"},
+    "reg_015": {"anti discrimination", "protected", "fair lending"},
+    "reg_016": {"ai", "ml", "explainability", "model", "decision"},
+    "reg_017": {"data privacy", "consent", "data protection"},
+    "reg_018": {"secured", "ltv", "housing loan"},
+    "reg_019": {"rejection", "reject", "reason disclosure"},
+    "reg_020": {"review", "credit review", "credit limit"},
+    "reg_021": {"microfinance", "household income"},
+    "reg_022": {"npa", "minimum amount due", "90 days"},
+    "reg_023": {"digital lending", "fees", "cooling off"},
+    "reg_024": {"grievance", "complaints", "ombudsman"},
+    "reg_025": {"esg", "environmental", "social risk"},
+}
 
-CHROMA_PERSIST_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "chroma_db")
-COLLECTION_NAME = "lending_regulations"
+
+def _tokenize(text: str) -> list[str]:
+    return [t for t in _TOKEN_PATTERN.findall(text.lower()) if t not in _STOPWORDS]
+
+
+def _score_chunk(reg_id: str, query_tokens: list[str], chunk_text: str) -> int:
+    chunk_tokens = _tokenize(chunk_text)
+    counts = Counter(chunk_tokens)
+    score = sum(counts[token] for token in query_tokens)
+    query_text = " ".join(query_tokens)
+
+    chunk_lower = chunk_text.lower()
+    for tag in _REGULATION_TAGS.get(reg_id, set()):
+        if tag in query_text:
+            score += 6
+        elif any(token in tag for token in query_tokens):
+            score += 2
+
+    phrase_bonuses = [
+        ("high risk", {"default", "reject", "credit history"}, 4),
+        ("medium risk", {"income", "employment", "review"}, 3),
+        ("low risk", {"property", "ownership", "education"}, 2),
+    ]
+    for phrase, tag_group, weight in phrase_bonuses:
+        if phrase in query_text and tag_group & _REGULATION_TAGS.get(reg_id, set()):
+            score += weight
+
+    if "key" in chunk_lower and "risk factor" in query_text:
+        score += 1
+
+    return score
 
 
 def initialize_rag():
     """
-    Build and persist the ChromaDB collection with regulation chunks.
-    Idempotent — skips if the collection already has the expected documents.
+    Compatibility shim for the previous Chroma-backed implementation.
+    Returns the static regulation list so callers can treat this as initialized.
     """
-    client = chromadb.PersistentClient(path=CHROMA_PERSIST_DIR)
+    return REGULATION_CHUNKS
 
-    # Try to get the existing collection
-    try:
-        collection = client.get_collection(name=COLLECTION_NAME)
-        # If collection already has all docs, skip
-        if collection.count() >= len(REGULATION_CHUNKS):
-            return collection
-        else:
-            # Collection exists but is incomplete — delete and rebuild
-            client.delete_collection(name=COLLECTION_NAME)
-    except Exception:
-        pass  # Collection doesn't exist yet
 
-    # Create the collection using Chroma's default embedding function
-    # (Chroma uses all-MiniLM-L6-v2 by default)
-    collection = client.create_collection(
-        name=COLLECTION_NAME,
-        metadata={"hnsw:space": "cosine"},
+def retrieve_regulations(query: str, n_results: int = 3) -> list[str]:
+    """
+    Retrieve the top-n most relevant regulation texts for a given query using
+    deterministic lexical matching.
+    """
+    query_tokens = _tokenize(query)
+    if not query_tokens:
+        return [chunk for _, chunk in REGULATION_CHUNKS[:n_results]]
+
+    ranked_chunks = sorted(
+        REGULATION_CHUNKS,
+        key=lambda item: (_score_chunk(item[0], query_tokens, item[1]), item[0]),
+        reverse=True,
     )
 
-    # Add all regulation chunks
-    ids = [chunk[0] for chunk in REGULATION_CHUNKS]
-    documents = [chunk[1] for chunk in REGULATION_CHUNKS]
-    metadatas = [{"source": "RBI_Guidelines", "chunk_id": chunk[0]} for chunk in REGULATION_CHUNKS]
-
-    collection.add(
-        ids=ids,
-        documents=documents,
-        metadatas=metadatas,
-    )
-
-    return collection
+    top_chunks = [chunk_text for _, chunk_text in ranked_chunks[:max(1, n_results)]]
+    return top_chunks
 
 
-def retrieve_regulations(query: str, n_results: int = 3) -> list:
-    """
-    Retrieve the top-n most relevant regulation texts for a given query.
-
-    Parameters
-    ----------
-    query : str
-        The search query (e.g., risk class + risk driver info).
-    n_results : int
-        Number of regulation chunks to return.
-
-    Returns
-    -------
-    list[str]
-        List of regulation text strings.
-    """
-    client = chromadb.PersistentClient(path=CHROMA_PERSIST_DIR)
-
-    try:
-        collection = client.get_collection(name=COLLECTION_NAME)
-    except Exception:
-        # Collection not initialized yet — do it now
-        collection = initialize_rag()
-
-    results = collection.query(
-        query_texts=[query],
-        n_results=min(n_results, collection.count()),
-    )
-
-    if results and results.get("documents") and len(results["documents"]) > 0:
-        return results["documents"][0]
-
-    return []
-
-
-# ────────────────────────────────────────────────────────────────
-# Quick self‑test
-# ────────────────────────────────────────────────────────────────
 if __name__ == "__main__":
-    print("Initializing RAG system …")
-    col = initialize_rag()
-    print(f"Collection created with {col.count()} documents.")
-
-    test_query = "What is the minimum credit score for a loan?"
-    docs = retrieve_regulations(test_query, n_results=3)
-    print(f"\nQuery: {test_query}")
-    for i, doc in enumerate(docs, 1):
-        print(f"\n--- Result {i} ---")
-        print(doc[:200] + "…")
+    sample_query = "High risk borrower with low income and unstable employment"
+    print(f"Query: {sample_query}\n")
+    for idx, result in enumerate(retrieve_regulations(sample_query, n_results=3), start=1):
+        print(f"--- Result {idx} ---")
+        print(result)
+        print()
